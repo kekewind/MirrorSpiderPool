@@ -239,6 +239,8 @@ class Router():
         if "html" in content_type:
             # html 解析替换
             result = self.parser.replace(target_content, web_yml, is_index)
+            # html 链接处理
+            result = self.parser.link_change(result, root_domain, target_root_domain, target_full_domain)
             # html 标签处理
             if os.path.exists(web_json_path):
                 async with aiofiles.open(web_json_path,'r')as json_f:

@@ -344,6 +344,9 @@ UNIQUE (link)
     
     def parse_path(self,url_path):
         """解析url_path"""
+        # url反攻击处理
+        while "//" in url_path or './' in url_path:
+            url_path = url_path.replace('//','/').replace('./','/')
         path = url_path.strip('./').replace('/','\\')
         path = "\\"+quote(path).replace('%5C','\\')
         path = '' if path == '\\' else path

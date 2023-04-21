@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /verify
+
+Sitemap: {{ request.base_url }}sitemap.xml
+Sitemap: {{ request.base_url }}sitemap.txt
+Sitemap: {{ request.base_url }}sitemap.html

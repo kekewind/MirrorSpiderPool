@@ -1,0 +1,19 @@
+<div>
+    <ul>
+        <h1>首页模板</h1>
+        {% for url in urls %}
+        <li style="list-style:decimal;">
+            <a href="{{ request.base_url }}?tem={{ url }}" target="_blank">{{url}}</a>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <ul>
+        <h1>内页模板</h1>
+        {% for page_url in page_urls %}
+        <li style="list-style:decimal;">
+            <a href="{{ request.base_url }}page?tem={{ page_url }}" target="_blank">{{page_url}}</a>
+        </li>
+        {% endfor %}
+    </ul>
+</div>

@@ -1,0 +1,3 @@
+{{ request.base_url }}
+{% for url in urls %}{{url}}
+{% endfor %}
