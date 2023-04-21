@@ -1,0 +1,16 @@
+venv/
+func/__pycache__/
+func/sql.py
+func/table.py
+logs/
+cache/
+cache_tem/
+others/ad.html
+static/_/js/ad_.js
+template/others/ad_.html
+template/others/fuck.conf
+template/others/nginx.conf
+config/doc/域名_.txt
+target/
+web/
+spiderpool/

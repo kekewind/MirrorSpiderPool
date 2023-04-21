@@ -32,7 +32,7 @@ class TagParser():
                 for _ in re.findall(tag_text, tem):
                     value_ = random.choice(value)
                     tem = tem.replace(tag_text, value_, 1)
-                    self.replace_data.append((tag_text,value))
+                    self.replace_data.append((tag_text,value_))
         return tem
 
     def extract_line(self, tag, tem):

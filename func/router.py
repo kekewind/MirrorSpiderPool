@@ -245,6 +245,7 @@ class Router():
                     json_text = await json_f.read()
                 replace_data = json.loads(json_text)['replace']
                 for i in replace_data:
+                    print(i)
                     result = result.replace(i[0],i[1])
             else:
                 result,replace_data = TagParser(request,self.func).parse(result)
