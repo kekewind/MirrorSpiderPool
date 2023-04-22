@@ -179,59 +179,79 @@ class Router():
         """主路由"""
         # config = self.func.get_yaml(CONF_PATH)
         url = str(request.url)
-        is_index = True if path == '' or path == '/' else False
         subdomain, full_domain, root_domain = self.func.get_domain_info(url)
+        real_path = url.split(root_domain,1)[1]
+        is_index = True if path == '' or path == '/' else False
         is_www = True if subdomain == 'www' or subdomain == '' else False
         web_yml_dir_path = os.path.join(WEB_PATH, root_domain)
         if is_www:
             web_yml_path = f'{web_yml_dir_path}.yml'
         else:
             web_yml_path = os.path.join(web_yml_dir_path, full_domain)+'.yml'
-        url_path = full_domain+self.func.parse_path(path)+".json"
+        # web缓存文件名
+        url_path = full_domain+self.func.parse_path(real_path)+".json"
         print(url_path)
         web_json_dir_path = os.path.join(web_yml_dir_path,'cache')
+        # web缓存文件路径
         web_json_path = os.path.join(web_json_dir_path, url_path)
         # 判断是否存在配置文件
         if os.path.exists(web_yml_path):
             web_yml = self.func.get_yaml(web_yml_path)
         else:
             return web_yml_path+"不存在"
+        # 首页 等待访问的目标站网址
         target_url = web_yml["【镜像配置】"]["目标"]
         target_subdomain, target_full_domain, target_root_domain = self.func.get_domain_info(
             target_url)
         if is_index:
             target_dir_path = os.path.join(TARGET_PATH, target_full_domain)
+            # 首页 目标站缓存文件路径
             target_path = target_dir_path+"/index.html"
             target_tem_path = target_dir_path+"/from.yml"
         else:
             target_dir_path = os.path.join(
                 TARGET_PATH, target_full_domain)+'/page/'
-            target_url_path = target_full_domain+self.func.parse_path(path)
+            # 内页 目标站缓存文件名
+            target_url_path = target_full_domain+self.func.parse_path(real_path)
+            # 内页 目标站缓存文件路径
             target_path = os.path.join(target_dir_path, f'{target_url_path}')
-            target_url = f"http://{target_full_domain}/{path.strip('./')}"
+            # 内页 等待访问的目标站网址
+            target_url = f"http://{target_full_domain}/{real_path.strip('./')}"
+
+        target_type_path = target_path+'.type'
         if os.path.exists(target_path):
+            print(f'存在缓存：{target_path}')
             if is_index:
-                target_content, content_type = await self.target.linecache_get(target_path)
+                target_content, content_type = await self.target.linecache_get(target_path,target_type_path )
             else:
-                target_content, content_type = await self.target.get(target_path)
+                target_content, content_type = await self.target.get(target_path,target_type_path)
+        elif os.path.exists(target_type_path):
+            # 存在type文件
+            print(f'不存在缓存 但存在type：{target_path}')
+            async with aiofiles.open(target_type_path,'r')as json_f:
+                json_content = await json_f.read()
+            json_info = json.loads(json_content)
+            if json_info['code']!=200:
+                return Response(content=None, status_code=404)
         else:
+            print(f'不存在缓存：{target_path}')
             # mp4视频流处理
             if target_url[-len('.mp4'):] == '.mp4':
-                print('流式处理视频')
+                print(f'流式处理视频：{target_path}')
                 return RedirectResponse(url=f'/api/video?url={target_url}', status_code=301)
             os.makedirs(target_dir_path, exist_ok=True)
             # 爬取目标网址 缓存页面
             print('目标网址：', target_url)
-            save_success = await self.target.save(target_url, target_path)
+            save_success = await self.target.save(target_url, target_path,target_type_path)
             if save_success:
                 print(target_path, '保存成功')
                 if is_index:
                     # tem配置文件路径写入
                     with open(target_tem_path, 'w', encoding='utf-8')as tem_f:
                         tem_f.write(f"path: {web_yml_path}")
-                    target_content, content_type = await self.target.linecache_get(target_path)
+                    target_content, content_type = await self.target.linecache_get(target_path,target_type_path)
                 else:
-                    target_content, content_type = await self.target.get(target_path)
+                    target_content, content_type = await self.target.get(target_path,target_type_path)
             else:
                 target_content = None
         if target_content is None:

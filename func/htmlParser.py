@@ -220,8 +220,27 @@ class HtmlParser():
 
     def link_change(self, source, my_root_domain, target_root_domain, target_full_domain):
         """链接处理"""
-        # 　a链接处理
+        # 　link链接处理
         tree = etree.HTML(source)
+        links = tree.xpath("//link/@href")
+        for link in links:
+            if any(link[:len(i)] == i for i in ['http://', "https://", '//']):
+                link_subdomain, link_full_domain, link_root_domain = self.func.get_domain_info(
+                    link)
+                if link_full_domain == target_full_domain:
+                    # 目标网址转本站相对路径
+                    new_link_path = link.split(target_full_domain, 1)[1]
+                    new_link = new_link_path if new_link_path != '' else '/'
+                    source = source.replace(f'href="{link}"', f'href="{new_link}"').replace(
+                        f"href='{link}'", f'href="{new_link}"')
+                elif link_root_domain == target_root_domain:
+                    # 目标泛站网址处理为自己的泛站
+                    link_split = link.split(target_root_domain, 1)
+                    new_link = link_split[0].replace(
+                        'http://', '//').replace('https://', '//')+my_root_domain+link_split[1]
+                    source = source.replace(f'href="{link}"', f'href="{new_link}"').replace(
+                        f"href='{link}'", f'href="{new_link}"')
+        # 　a链接处理
         a_links = tree.xpath("//a/@href")
         for link in a_links:
             # 处理所有绝对链接
@@ -247,8 +266,7 @@ class HtmlParser():
                 source = source.replace(f'href="{link}"', f'href="{new_link}"').replace(
                     f"href='{link}'", f'href="{new_link}"')
         # src处理
-        src_list = re.findall(
-            "src='(.*?)'", source).extend(re.findall('src="(.*?)"', source))
+        src_list = re.findall("src='(.*?)'", source)+ re.findall('src="(.*?)"', source)
         for link in src_list:
             if any(link[:len(i)] == i for i in ['http://', "https://", '//']):
                 link_subdomain, link_full_domain, link_root_domain = self.func.get_domain_info(
@@ -257,10 +275,13 @@ class HtmlParser():
                     # 目标网址转本站相对路径
                     new_link_path = link.split(target_full_domain, 1)[1]
                     new_link = new_link_path if new_link_path != '' else '/'
+                    source = source.replace(f'src="{link}"', f'src="{new_link}"').replace(
+                        f"src='{link}'", f'src="{new_link}"')
                 elif link_root_domain == target_root_domain:
                     # 目标泛站网址处理为自己的泛站
                     link_split = link.split(target_root_domain, 1)
                     new_link = link_split[0].replace(
                         'http://', '//').replace('https://', '//')+my_root_domain+link_split[1]
-                source = source.replace(f'src="{link}"', f'src="{new_link}"').replace(
-                    f"src='{link}'", f'src="{new_link}"')
+                    source = source.replace(f'src="{link}"', f'src="{new_link}"').replace(
+                        f"src='{link}'", f'src="{new_link}"')
+        return source

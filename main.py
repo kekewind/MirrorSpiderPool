@@ -20,7 +20,7 @@ app = FastAPI()
 # gzip流文件处理
 app.add_middleware(GZipMiddleware, minimum_size=600)
 # app.mount("/static", StaticFiles(directory="static"), name="static")
-# func = Func()
+func = Func()
 # # 创建一个templates（模板）对象，以后可以重用。
 templates = Jinja2Templates(directory=TEM_PATH)
 
@@ -39,10 +39,10 @@ async def _startup():
 #     # 路由引用
     app.state.router = Router(templates)
 
-# @app.middleware("http")
-# async def middleware(request: Request, call_next):
-#     """中间件 访问前后"""
-#     return await middle.middleware(request, call_next, func, templates)
+@app.middleware("http")
+async def middleware(request: Request, call_next):
+    """中间件 访问前后"""
+    return await middle.middleware(request, call_next, func, templates)
 
 @app.get("/api/video")
 async def get_video(url: str):

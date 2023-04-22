@@ -41,7 +41,7 @@ class TargetSpider():
                         result = result
         return result
 
-    async def save(self,url,path):
+    async def save(self,url,path,type_path):
         """保存缓存数据"""
         try:
             resp = await self.get_resp(url)
@@ -51,7 +51,7 @@ class TargetSpider():
                 print(url,str(err))
                 media_type = 'text/html'
             json_info = {"code":resp.status_code,"media_type":media_type}
-            async with aiofiles.open(path+'.type','w',encoding='utf-8')as json_f:
+            async with aiofiles.open(type_path,'w',encoding='utf-8')as json_f:
                 await json_f.write(json.dumps(json_info))
             # 写入内容
             if json_info['code']==200:
@@ -70,9 +70,9 @@ class TargetSpider():
             print(f"{path} save error:",err)
             return False
 
-    async def get(self,path):
+    async def get(self,path,type_path):
         """获取缓存数据"""
-        async with aiofiles.open(path+'.type','r')as json_f:
+        async with aiofiles.open(type_path,'r')as json_f:
             json_content = await json_f.read()
         json_info = json.loads(json_content)
         content = None
@@ -84,15 +84,19 @@ class TargetSpider():
             else:
                 async with aiofiles.open(path,'rb')as content_f:
                     content = await content_f.read()
+        # 处理重复charset=utf-8;
+        content_type = content_type.replace("charset=utf-8",'').strip('; ')
         return content,content_type
     
-    async def linecache_get(self,path):
+    async def linecache_get(self,path,type_path):
         """获取缓存数据 内存模式"""
-        json_content = self.func.get_text(path+'.type')
+        json_content = self.func.get_text(type_path)
         json_info = json.loads(json_content)
         content = None
         if json_info['code']==200:
             content = self.func.get_text(path)
         content_type = json_info['media_type']
+        # 处理重复charset=utf-8;
+        content_type = content_type.replace("charset=utf-8",'').strip('; ')
         return content,content_type
     
