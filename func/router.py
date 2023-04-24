@@ -272,6 +272,7 @@ class Router():
             print(f'缓存被删除 重新获取目标站缓存 {target_path}')
         else:
             print(f'不存在目标站缓存与type 获取目标站缓存：{target_path}')
+
         # 判断是否需要缓存
         if not config['【目标站缓存】']['开启缓存']:
             print(f'缓存功能已关闭 跳过缓存目标站 {target_path}')
@@ -286,9 +287,10 @@ class Router():
         if any(path[-len(i):] == i for i in media_type_list):
             # 跳转到文件流处理
             return {'success': False, "jump": f'/-/{target_url.replace("http://","").replace("https://","")}'}
+
         os.makedirs(target_dir_path, exist_ok=True)
-        # 爬取目标网址 缓存页面
         print('爬取目标网址：', target_url)
+        # 爬取目标网址 缓存页面
         save_success = await self.target.save(target_url, target_path, target_type_path)
         if not save_success:
             return {'success': False, "info": "数据保存失败"}
