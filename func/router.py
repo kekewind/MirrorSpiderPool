@@ -24,7 +24,6 @@ class Router():
 
     def __init__(self, templates):
         self.templates = templates
-        # self.pool = pool
         self.func = Func()
         self.target = Target(self.func)
         self.parser = HtmlParser(self.func)
@@ -169,13 +168,32 @@ class Router():
             ROBOTS_TXT, datas, media_type="text/plain")
         return result
 
-    async def status_404(self,request, config,web_yml,target_dir_path,web_gz_path):
+    async def status_404(self,request, config,web_yml,target_dir_path,root_domain, target_root_domain, target_full_domain,web_gz_path):
         """主路由404页面处理"""
+        if not config['【泛目录设置】']['开启泛目录功能']:
+            return Response(content=None, status_code=404)
         save_cache = False if config['【蜘蛛池设置】']['开启动态蜘蛛池'] else True
         template = web_yml['【镜像配置】']['模板']
         if template == '自动':
             # 随机引用当前网站的目标站内页
-            print(os.listdir(target_dir_path))
+            target_sitemap_path = os.path.join(target_dir_path.replace('/page/',''),'sitemap.txt')
+            if os.path.exists(target_sitemap_path):
+                if len(target_pages := self.func.get_lines(target_sitemap_path))>0:
+                    target_tem_path = random.choice(target_pages)
+                    async with aiofiles.open(target_tem_path,'r',encoding='utf-8')as f:
+                        target_tem = await f.read()
+                    
+                    # html 解析替换
+                    result = self.parser.replace(target_tem, web_yml, False)
+                    # html 链接处理 动态蜘蛛处理
+                    cut_num = config['【泛目录设置】']['自动模板链接转换比例']
+                    img_num = config['【泛目录设置】']['自动模板图片转换比例']
+                    result = self.parser.dynamic_link_change(config, result, root_domain, target_root_domain, target_full_domain,cut_num=cut_num,img_num=img_num)
+                    # 标签替换
+                    result = TagParser(request, self.func).parse(result)[0]
+                    if save_cache:
+                        await self.func.save_gz(result,web_gz_path)
+                    return Response(content=result, media_type="text/html")
         else:
             print(template)
             if os.path.exists(template):
@@ -186,8 +204,6 @@ class Router():
                 return Response(content=result, media_type="text/html")
             else:
                 return JSONResponse(status_code=404, content={"errcode": "10003", "info": self.func.errcode['10003']})
-
-        return Response(content=None, status_code=404)
 
     def save_web_yml(self, tag, father_yml_path, web_yml_path, mode='copy'):
         """保存web_yml配置文件"""
@@ -215,7 +231,7 @@ class Router():
             yml_json = json.loads("{"+result+"}")
             yml['【镜像配置】']['域名'] = yml_json['域名']
             yml['【镜像配置】']['核心词'] = yml_json['核心词']
-            yml['【镜像配置】']['目标'] = yml_json['目标']
+            yml['【镜像配置】']['目标'] = yml_json['目标'].lstrip('/')
             yml['【镜像配置】']['模板'] = yml_json['模板']
             yml['【首页TDK】']['标题'] = yml_json['标题']
             yml['【首页TDK】']['关键词'] = yml_json['关键词']
@@ -260,7 +276,7 @@ class Router():
             else:
                 target_content, content_type = await self.target.get(target_path, target_type_path)
             # 存在缓存 直接返回
-            return {'success': True, 'content': target_content, 'type': content_type}
+            return {'success': True, 'content': target_content, 'type': content_type,"X-Request-Time":0}
         elif os.path.exists(target_type_path):
             # 存在type文件
             print(f'不存在目标站缓存 但存在type：{target_type_path}')
@@ -268,7 +284,7 @@ class Router():
                 json_content = await json_f.read()
             json_info = json.loads(json_content)
             if json_info['code'] != 200:
-                return {'success': False, "code": json_info['code'], 'type': json_info['media_type']}
+                return {'success': False, "info": "状态码非200", "code": json_info['code'], 'type': json_info['media_type']}
             print(f'缓存被删除 重新获取目标站缓存 {target_path}')
         else:
             print(f'不存在目标站缓存与type 获取目标站缓存：{target_path}')
@@ -276,7 +292,7 @@ class Router():
         # 判断是否需要缓存
         if not config['【目标站缓存】']['开启缓存']:
             print(f'缓存功能已关闭 跳过缓存目标站 {target_path}')
-            return {'success': False, "info": "数据保存失败"}
+            return {'success': False, "info": "缓存功能已关闭"}
 
         # 静态文件流处理
         if config['【目标站缓存】']['开启静态文件缓存']:
@@ -286,24 +302,36 @@ class Router():
             media_type_list = list(MEDIA_TYPE.keys())
         if any(path[-len(i):] == i for i in media_type_list):
             # 跳转到文件流处理
-            return {'success': False, "jump": f'/-/{target_url.replace("http://","").replace("https://","")}'}
+            return {'success': False,"info": "跳转到文件流处理", "jump": f'/-/{target_url.replace("http://","").replace("https://","")}'}
 
         os.makedirs(target_dir_path, exist_ok=True)
+
+        if not any([path[-len(i):] == i for i in config['【目标站缓存】']['缓存静态文件名']]):
+            # 判断是否达到目标站页面缓存上限
+            if config['【目标站缓存】']['缓存页面上限']==0:
+                return {'success': False, "info": "缓存上限为0 禁止缓存"}
+            else:
+                target_sitemap_path = os.path.join(target_dir_path.replace('/page/',''),'sitemap.txt')
+                if os.path.exists(target_sitemap_path):
+                    target_page_count = len(self.func.get_lines(target_sitemap_path))
+                    if target_page_count>=config['【目标站缓存】']['缓存页面上限']:
+                        return {'success': False, "info": f"缓存上限达到{config['【目标站缓存】']['缓存页面上限']} 禁止缓存"}
+
         print('爬取目标网址：', target_url)
         # 爬取目标网址 缓存页面
-        save_success = await self.target.save(target_url, target_path, target_type_path)
+        save_success,request_time = await self.target.save(config,target_url, target_dir_path,target_path, target_type_path)
         if not save_success:
             return {'success': False, "info": "数据保存失败"}
         print(target_path, '保存成功')
         if is_index:
             # 如果是首页访问 新开目标站 则在from.yml中写入配置文件路径web_yml_path
             target_from_path = target_dir_path+"/from.yml"
-            with open(target_from_path, 'w', encoding='utf-8')as tem_f:
-                tem_f.write(f"path: {web_yml_path}")
+            async with aiofiles.open(target_from_path, 'w', encoding='utf-8')as tem_f:
+                await tem_f.write(f"path: {web_yml_path}")
             target_content, content_type = await self.target.linecache_get(target_path, target_type_path)
         else:
             target_content, content_type = await self.target.get(target_path, target_type_path)
-        return {'success': True, 'content': target_content, 'type': content_type}
+        return {'success': True, 'content': target_content, 'type': content_type,'X-Request-Time':request_time}
 
     async def route(self, request, response, path):
         """主路由"""
@@ -321,10 +349,11 @@ class Router():
         # web 泛目录缓存文件路径 .gz
         web_gz_path = os.path.join(web_json_dir_path, url_gz_path)
         # 判断是否存在gz 泛目录缓存 存在则直接返回 gz 文件
-        if os.path.exists(web_gz_path):
+        if config['【泛目录设置】']['开启泛目录功能'] and os.path.exists(web_gz_path):
             resp = FileResponse(web_gz_path,media_type='text/html')
             print('直接返回gz文件')
             resp.headers[ 'Content-Encoding'] = 'gzip'
+            resp.headers["X-Gz"] = '1'
             return resp
         
         # web配置文件路径
@@ -367,27 +396,34 @@ class Router():
             if 'jump' in target_result:
                 # 跳转到文件流处理
                 return RedirectResponse(url=target_result['jump'], status_code=301)
-            return await self.status_404(request, config,web_yml,target_dir_path,web_gz_path)
+            print(target_result['info'])
+            return await self.status_404(request, config,web_yml,target_dir_path,root_domain, target_root_domain, target_full_domain,web_gz_path)
             # if 'code' in target_result:
             #     return Response(content=str(target_result['code']), media_type=target_result['type'], status_code=target_result['code'])
             # return Response(content=None, status_code=404)
         target_content, content_type = target_result['content'], target_result['type']
+        # response.headers["X-Request-Time"] = str(target_result['X-Request-Time'])
         if "html" not in content_type:
+            resp = Response(content=target_content, media_type=content_type)
+            resp.headers["X-Request-Time"] = str(target_result['X-Request-Time'])
             # 非html页面直接返回
-            return Response(content=target_content, media_type=content_type)
+            return resp
 
-        # 动态模式
+        # 动态模式 镜像页动态处理
         if config['【蜘蛛池设置】']['开启动态蜘蛛池']:
             # html 解析替换
             result = self.parser.replace(target_content, web_yml, is_index)
             # html 链接处理 动态蜘蛛处理
-            result = self.parser.dynamic_link_change(
-                config, result, root_domain, target_root_domain, target_full_domain)
+            cut_num = config['【蜘蛛池设置】']['镜像页链接转换比例']
+            img_num = config['【泛目录设置】']['自动模板图片转换比例']
+            result = self.parser.dynamic_link_change(config, result, root_domain, target_root_domain, target_full_domain,cut_num=cut_num,img_num=img_num)
             # 动态蜘蛛池模式 已经拿到目标站缓存数据
             result, replace_data = TagParser(request, self.func).parse(result)
             # 动态蜘蛛池 直接返回动态数据
             print('蜘蛛池模式进了')
-            return Response(content=result, media_type=content_type)
+            resp = Response(content=result, media_type=content_type)
+            resp.headers["X-Request-Time"] = str(target_result['X-Request-Time'])
+            return resp
 
         # html 解析替换
         result = self.parser.replace(target_content, web_yml, is_index)
@@ -402,7 +438,7 @@ class Router():
             replace_data = json.loads(json_text)['replace']
             # html 标签处理替换
             for i in replace_data:
-                result = result.replace(i[0], i[1])
+                result = result.replace(i[0], i[1],1)
         else:
             # 不存在缓存 开始生成缓存文件
             result, replace_data = TagParser(request, self.func).parse(result)
@@ -419,7 +455,9 @@ class Router():
                 # 保存web json缓存
                 async with aiofiles.open(web_json_path, 'w')as json_f:
                     await json_f.write(json_dumps_str)
-        return Response(content=result, media_type=content_type)
+        resp = Response(content=result, media_type=content_type)
+        resp.headers["X-Request-Time"] = str(target_result['X-Request-Time'])
+        return resp
 
     async def stream(self, path):
         """流式代理访问目标站静态文件"""
@@ -436,7 +474,9 @@ class Router():
                     break
             if media_type is not None:
                 try:
-                    return StreamingResponse(self.func.request_stream(url, headers=headers, use_ip=use_ip), media_type=media_type)
+                    stream_resp = self.func.request_stream(url, headers=headers, use_ip=use_ip)
                 except Exception as err:
-                    print('流式代理访问 报错：', path, str(err))
+                    print('流式访问：',path,str(err))
+                    return Response(content=None, status_code=404)
+                return StreamingResponse(stream_resp, media_type=media_type)
         return Response(content=None, status_code=404)

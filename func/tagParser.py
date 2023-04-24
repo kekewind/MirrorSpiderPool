@@ -229,9 +229,9 @@ class TagParser():
             file_paths = [os.path.join(file_dir,name) for name in os.listdir(file_dir)]
             if len(file_paths) > 0:
                 for _ in re.findall(tag_text, tem):
-                    img_path = random.choice(file_paths)
-                    tem = tem.replace(tag_text, img_path, 1)
-                    self.replace_data.append((tag_text,img_path))
+                    file_path = "/"+random.choice(file_paths)
+                    tem = tem.replace(tag_text, file_path, 1)
+                    self.replace_data.append((tag_text,file_path))
         return tem
 
     def html_coding(self,tem):
@@ -249,6 +249,13 @@ class TagParser():
         titles = re.findall('<title.*?>(.*?)</title>',tem,re.IGNORECASE)
         title = '' if len(titles)==0 else titles[0]
         return title
+    
+    def get_keyword(self,tem):
+        """获取标签keywords"""
+        keywords = re.findall('<meta name="keywords" content="(.*?)" />',tem,re.IGNORECASE)
+        keywords = '' if len(keywords)==0 else keywords[0]
+        keyword = keywords.split(',')[0]
+        return keyword
         
     def parse(self, tem):
         """解析标签"""
@@ -265,8 +272,11 @@ class TagParser():
         tem = self.create_string(tag, tem)
         # 信息获取
         tem = self.get_info(tag, tem)
+        # 处理{title}{keyword}
+        title = self.get_title(tem)
+        tem = tem.replace('{title}',title)
+        keyword = self.get_keyword(tem)
+        tem = tem.replace('{keyword}',keyword)
         # 处理HTML实体转码
         tem = self.html_coding(tem)
-        # title
-        # title = self.get_title(tem)
         return tem,self.replace_data

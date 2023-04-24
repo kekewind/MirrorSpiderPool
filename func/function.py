@@ -3,6 +3,7 @@
 
 from socket import gethostbyname
 import linecache
+import html
 import os
 import gzip
 import json
@@ -45,9 +46,12 @@ class Func():
         """异步访问 GET流式"""
         transport = httpx.AsyncHTTPTransport(local_address=use_ip)
         async with httpx.AsyncClient(http2=False, transport=transport) as client:
-            async with client.stream("GET", url,headers=headers, params=params,follow_redirects=follow_redirects) as r:
-                async for chunk in r.aiter_bytes():
-                    yield chunk
+            try:
+                async with client.stream("GET", url,headers=headers, params=params,follow_redirects=follow_redirects) as r:
+                    async for chunk in r.aiter_bytes():
+                        yield chunk
+            except Exception as err:
+                print('异步访问 GET流式 报错：',url,str(err))
 
     def get_ips(self):
         """获取当前服务器所有IP"""
@@ -125,15 +129,19 @@ class Func():
             result.remove('')
         return result
 
-    def transcoding(self, s):
+    def transcoding(self, string):
         """html实体化转码"""
         new = ""
-        for i in s:
+        for i in string:
             if '\u4e00' <= i <= '\u9fff':
                 new += "&#" + str(ord(i)) + ";"
             else:
                 new += i
         return new
+    
+    def unescape(self,string):
+        """html实体解码"""
+        return html.unescape(string)
 
     async def get_file_count(self, file_path):
         """快速获取文档行数"""

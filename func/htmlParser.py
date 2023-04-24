@@ -47,8 +47,9 @@ class HtmlParser():
             if any([i in js_code for i in ['google', 'elgoog', 'facebook', 'koobecaf', 'cnzz.com', 'baidu.com', '51.la']]):
                 source = source.replace(js_code, "")
         # 去回车
-        source = "\n".join(
-            [i for i in source.strip().split('\n') if len(i.strip()) > 0])
+        source = "\n".join([i for i in source.strip().split('\n') if len(i.strip()) > 0])
+        # 实体解码
+        source = self.func.unescape(source)
         return source
 
     def index_repalce(self, source, conf):
@@ -287,7 +288,7 @@ class HtmlParser():
                         f"src='{link}'", f'src="{new_link}"')
         return source
 
-    def dynamic_link_change(self, config, source, my_root_domain, target_root_domain, target_full_domain):
+    def dynamic_link_change(self, config, source, my_root_domain, target_root_domain, target_full_domain,cut_num=None,img_num=None):
         """链接处理 蜘蛛池动态处理"""
         # 　link链接处理
         tree = etree.HTML(source)
@@ -309,6 +310,24 @@ class HtmlParser():
                         'http://', '//').replace('https://', '//')+my_root_domain+link_split[1]
                     source = source.replace(f'href="{link}"', f'href="{new_link}"').replace(
                         f"href='{link}'", f'href="{new_link}"')
+        # 　a链接处理
+        a_links = tree.xpath("//a/@href")
+        for link in a_links:
+            # 处理所有绝对链接
+            if any(link[:len(i)] == i for i in ['http://', "https://", '//']):
+                link_full_domain, link_root_domain = self.func.get_domain_info(link)[1:]
+                if link_full_domain == target_full_domain:
+                    # 目标网址转本站相对路径
+                    new_link_path = link.split(target_full_domain, 1)[1]
+                    new_link = new_link_path if new_link_path != '' else '/'
+                    source = source.replace(f'href="{link}"', f'href="{new_link}"').replace(f"href='{link}'", f'href="{new_link}"')
+                elif link_root_domain == target_root_domain:
+                    # 目标泛站网址处理为自己的泛站
+                    link_split = link.split(target_root_domain, 1)
+                    new_link = link_split[0].replace(
+                        'http://', '//').replace('https://', '//')+my_root_domain+link_split[1]
+                    source = source.replace(f'href="{link}"', f'href="{new_link}"').replace(f"href='{link}'", f'href="{new_link}"')        
+        tree = etree.HTML(source)
         # 　a链接处理
         a_dict = {'内链': [], '外链': [], "泛站": [], '泛站内链': []}
         for i in tree.xpath("//a"):
@@ -332,18 +351,47 @@ class HtmlParser():
                 a_dict['泛站'].append((a_text,link))
             else:
                 a_dict['内链'].append((a_text,link))
-        cut_num = config['【蜘蛛池设置】']['镜像页链接转换比例']
+        
         random.shuffle(a_dict['内链'])
         random.shuffle(a_dict['外链'])
         random.shuffle(a_dict['泛站'])
         random.shuffle(a_dict['泛站内链'])
-        new_a_dict = {
-            '内链': a_dict['内链'][:int(len(a_dict['内链'])*cut_num)],
-            '外链': a_dict['外链'][:int(len(a_dict['外链'])*cut_num)],
-            '泛站': a_dict['泛站'][:int(len(a_dict['泛站'])*cut_num)],
-            '泛站内链': a_dict['泛站内链'][:int(len(a_dict['泛站内链'])*cut_num)]
-        }
+        if cut_num!=1:
+            new_a_dict = {
+                '内链': a_dict['内链'][:int(len(a_dict['内链'])*cut_num)],
+                '外链': a_dict['外链'][:int(len(a_dict['外链'])*cut_num)],
+                '泛站': a_dict['泛站'][:int(len(a_dict['泛站'])*cut_num)],
+                '泛站内链': a_dict['泛站内链'][:int(len(a_dict['泛站内链'])*cut_num)]
+            }
+        else:
+            new_a_dict = a_dict
+        # 链接占比重新分配
+        per_dict = config['【泛目录设置】']['自动模板链接占比']
+        count_list = [per_dict['内链'],per_dict['外链'],per_dict['泛站'],per_dict['泛站内链']]
+        sum_count = sum(count_list)
+        new_link_dict = {'内链': [], '外链': [], "泛站": [], '泛站内链': []}
+        if sum_count != 0:
+            # 重新分配链接占比
+            link_count = sum([len(links) for links in new_a_dict.values()])
+            outside_count = int(link_count*(per_dict['外链']/sum_count))
+            web_count = int(link_count*(per_dict['泛站']/sum_count))
+            web_inside_count = int(link_count*(per_dict['泛站内链']/sum_count))
+            all_links = new_a_dict['内链']+new_a_dict['外链']+new_a_dict['泛站内链']+new_a_dict['泛站']
+            for i in range(web_count):
+                link = all_links.pop()
+                new_link_dict['泛站'].append(link)
+            for i in range(web_inside_count):
+                link = all_links.pop()
+                new_link_dict['泛站内链'].append(link)
+            for i in range(outside_count):
+                link = all_links.pop()
+                new_link_dict['外链'].append(link)
+            new_link_dict['内链'] = all_links
+            new_a_dict = new_link_dict
+
+        print(new_a_dict)
         for k,links in new_a_dict.items():
+            print(k,len(links))
             for a_text,link in links:
                 new_link = "{"+k+"}"
                 if link!='/':
@@ -376,5 +424,38 @@ class HtmlParser():
         for title in title_list:
             source = source.replace(f'title="{title}"', '').replace(
                 f"title='{title}'", '')
-
+        tree = etree.HTML(source)
+        # h标签文章处理
+        title_count = 0
+        for i in ['h1','h2','h3','h4']:
+            tags = tree.xpath(f"//{i}/text()")
+            for tag in tags:
+                if "{" not in tag and self.func.exists_chinese(tag):
+                    if len(tag.strip())>7:
+                        if title_count==0:
+                            source = source.replace(f">{tag}<",'>{title}<')
+                            print('title',tag)
+                            title_count +=1
+                        else:
+                            source = source.replace(f">{tag}<",'>{标题}<')
+        # 标签文章处理
+        for i in ['p','span','div']:
+            tags = tree.xpath(f"//{i}//text()")
+            for tag in tags:
+                if "{" not in tag and self.func.exists_chinese(tag):
+                    if 25>=len(tag.strip())>7:
+                        if title_count==0:
+                            source = source.replace(f">{tag}<",'>{title}<')
+                            print('title',tag)
+                            title_count +=1
+                        else:
+                            source = source.replace(f">{tag}<",'>{标题}<')
+                    elif len(tag.strip())>25:
+                        source = source.replace(f">{tag}<",'>{句子({keyword},0-1)}<')
+        # 图片链接处理
+        if len(img_srcs:= tree.xpath("//img/@src"))>0:
+            random.shuffle(img_srcs)
+            for link in img_srcs[:int(len(img_srcs)*img_num)]:
+                source = source.replace(f'src="{link}"', 'src="{随机图片}"').replace(
+                        f"src='{link}'", 'src="{随机图片}"')
         return source

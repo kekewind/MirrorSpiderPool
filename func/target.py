@@ -3,6 +3,8 @@
 
 import json
 import random
+import os
+import time
 import httpx
 import aiofiles
 import chardet
@@ -41,10 +43,14 @@ class Target():
                         result = result
         return result
 
-    async def save(self,url,path,type_path):
+    async def save(self,config,url,target_dir,path,type_path):
         """保存缓存数据"""
         try:
+            # 请求处理前计时
+            start_time = time.time()
             resp = await self.get_resp(url)
+            # 请求处理后
+            x_request_time = time.time() - start_time
             try:
                 media_type = resp.headers['Content-Type']
             except Exception as err:
@@ -60,24 +66,32 @@ class Target():
                     result = self.parser.clean(resp_text)
                     async with aiofiles.open(path,'w')as cache_f:
                         await cache_f.write(result)
+                    if 'htm' in media_type and '/page/' in target_dir:
+                        # 写入sitemap.txt
+                        sitemap = os.path.join(target_dir.replace('/page/',''),'sitemap.txt')
+                        async with aiofiles.open(sitemap,'a',encoding='utf-8')as txt_f:
+                            await txt_f.write(path+"\n")
                 else:
                     # 保存二进制文件
                     async with aiofiles.open(path,'wb')as cache_f:
                         await cache_f.write(resp.content)
+                    # jpg反转
+                    if config['【目标站缓存】']['开启缓存图片翻转'] and any([path[-len(i):]==i for i in ['.jpg','.jpeg','.png','.gif']]):
+                        self.func.flip_image(path)
                 json_info = {"code":resp.status_code,"media_type":media_type}
                 # 写入type文件
                 async with aiofiles.open(type_path,'w',encoding='utf-8')as json_f:
                     await json_f.write(json.dumps(json_info))
-                return True
+                return True,x_request_time
             else:
                 json_info = {"code":resp.status_code,"media_type":media_type}
                 # 写入type文件
                 async with aiofiles.open(type_path,'w',encoding='utf-8')as json_f:
                     await json_f.write(json.dumps(json_info))
-                return False
+                return False,x_request_time
         except Exception as err:
-            print(f"{path} save error:",err)
-            return False
+            print(f"{path} save error: {str(err)}")
+            return False,0
 
     async def get(self,path,type_path):
         """获取缓存数据"""
