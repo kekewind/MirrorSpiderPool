@@ -220,16 +220,16 @@ class TagParser():
             self.replace_data.append((tag_text,text))
         return tem
 
-    def extract_img(self, tag, tem):
-        """图片抽取"""
-        for k, img_dir in tag['【图片抽取】'].items():
+    def extract_file_path(self, tag, tem):
+        """文件抽取"""
+        for k, file_dir in tag['【文件抽取】'].items():
             tag_text = "{"+k+"}"
             if tag_text not in tem:
                 continue
-            img_paths = [f"/{img_dir}/{img}" for img in os.listdir(img_dir)]
-            if len(img_paths) > 0:
+            file_paths = [os.path.join(file_dir,name) for name in os.listdir(file_dir)]
+            if len(file_paths) > 0:
                 for _ in re.findall(tag_text, tem):
-                    img_path = random.choice(img_paths)
+                    img_path = random.choice(file_paths)
                     tem = tem.replace(tag_text, img_path, 1)
                     self.replace_data.append((tag_text,img_path))
         return tem
@@ -260,7 +260,7 @@ class TagParser():
         # 文本抽取
         tem = self.extract_line(tag, tem)
         # 图片抽取
-        tem = self.extract_img(tag, tem)
+        tem = self.extract_file_path(tag, tem)
         # 字符生成
         tem = self.create_string(tag, tem)
         # 信息获取

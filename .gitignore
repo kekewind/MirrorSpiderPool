@@ -13,4 +13,5 @@ template/others/nginx.conf
 config/doc/域名_.txt
 target/
 web/
-spiderpool/
+SpiderPool/
+README.md

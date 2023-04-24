@@ -2,6 +2,7 @@
 """html源码解析器"""
 
 import re
+import random
 from lxml import etree
 
 
@@ -19,6 +20,14 @@ class HtmlParser():
         # 格式化 head标签
         source = re.sub('<head[\s\S]*?>', '<head>', source, flags=re.I)
         source = re.sub('</head>', '</head>', source, flags=re.I)
+        # 格式化 body标签
+        source = re.sub('<body[\s\S]*?>', '<body>', source, flags=re.I)
+        source = re.sub('</body>', '</body>', source, flags=re.I)
+        # <head>标签丢失检测
+        if "<head>" not in source:
+            source = source.replace('<html>', '<html>\n<head>', 1)
+        if "</head>" not in source:
+            source = source.replace('<body>', '</head>\n<body>', 1)
         # 过滤所有<!--.*?-->的备注信息
         source = re.sub('<!-[\s\S]*?-->', '', source)
         # 处理特殊title
@@ -53,16 +62,16 @@ class HtmlParser():
         global_replace_line = conf["【全局替换】"]["单行替换"]
         global_replace_lines = conf["【全局替换】"]["多行替换"]
         # 核心词标签处理
-        title = title.replace('{核心词}', core_word)
-        des = des.replace('{核心词}', core_word)
-        keywords = keywords.replace('{核心词}', core_word)
-        replace_lines = replace_lines.replace('{核心词}', core_word)
-        replace_line = [i.replace('{核心词}', core_word) for i in replace_line]
-        global_replace_lines = global_replace_lines.replace('{核心词}', core_word)
-        global_replace_line = [
-            i.replace('{核心词}', core_word) for i in global_replace_line]
+        # title = title.replace('{核心词}', core_word)
+        # des = des.replace('{核心词}', core_word)
+        # keywords = keywords.replace('{核心词}', core_word)
+        # replace_lines = replace_lines.replace('{核心词}', core_word)
+        # replace_line = [i.replace('{核心词}', core_word) for i in replace_line]
+        # global_replace_lines = global_replace_lines.replace('{核心词}', core_word)
+        # global_replace_line = [
+        #     i.replace('{核心词}', core_word) for i in global_replace_line]
         # 过滤TDK
-        if len(des) > 1:
+        if des is not None and len(des) > 1:
             # 转码处理
             if conf["【首页TDK】"]['转码'] and '{' not in des:
                 des = self.func.transcoding(des)
@@ -75,7 +84,7 @@ class HtmlParser():
             # 写入description
             source = source.replace(
                 '<head>', f'<head>\n<meta name="description" content="{des}" />')
-        if len(keywords) > 1:
+        if keywords  is not None and len(keywords) > 1:
             # 转码处理
             if conf["【首页TDK】"]['转码'] and '{' not in keywords:
                 keywords = self.func.transcoding(keywords)
@@ -87,7 +96,7 @@ class HtmlParser():
             # 写入keywords
             source = source.replace(
                 '<head>', f'<head>\n<meta name="keywords" content="{keywords}" />')
-        if len(title) > 1:
+        if title is not None and len(title) > 1:
             # 转码处理
             if conf["【首页TDK】"]['转码'] and '{' not in title:
                 title = self.func.transcoding(title)
@@ -136,30 +145,21 @@ class HtmlParser():
         replace_lines = conf["【内页替换】"]["多行替换"]
         global_replace_line = conf["【全局替换】"]["单行替换"]
         global_replace_lines = conf["【全局替换】"]["多行替换"]
-        # 核心词标签处理
-        title = title.replace('{核心词}', core_word)
-        des = des.replace('{核心词}', core_word)
-        keywords = keywords.replace('{核心词}', core_word)
-        replace_lines = replace_lines.replace('{核心词}', core_word)
-        replace_line = [i.replace('{核心词}', core_word) for i in replace_line]
-        global_replace_lines = global_replace_lines.replace('{核心词}', core_word)
-        global_replace_line = [
-            i.replace('{核心词}', core_word) for i in global_replace_line]
         # 过滤TDK
-        if len(des) > 1:
+        if des is not None and len(des) > 1:
             # 转码处理
             if conf["【首页TDK】"]['转码'] and '{' not in des:
                 des = self.func.transcoding(des)
             print(des)
             # 删除description
-            source = re.sub(r'<meta.*?name="Description".*?/>',
+            source = re.sub('<meta.*?name="Description".*?/>',
                             "", source, flags=re.I)
-            source = re.sub(r"<meta.*?name='Description'.*?/>",
+            source = re.sub("<meta.*?name='Description'.*?/>",
                             "", source, flags=re.I)
             # 写入description
             source = source.replace(
                 '<head>', f'<head>\n<meta name="description" content="{des}" />')
-        if len(keywords) > 1:
+        if keywords  is not None and len(keywords) > 1:
             # 转码处理
             if conf["【首页TDK】"]['转码'] and '{' not in keywords:
                 keywords = self.func.transcoding(keywords)
@@ -171,7 +171,7 @@ class HtmlParser():
             # 写入keywords
             source = source.replace(
                 '<head>', f'<head>\n<meta name="keywords" content="{keywords}" />')
-        if len(title) > 1:
+        if title is not None and len(title) > 1:
             # 转码处理
             if conf["【首页TDK】"]['转码'] and '{' not in title:
                 title = self.func.transcoding(title)
@@ -266,7 +266,8 @@ class HtmlParser():
                 source = source.replace(f'href="{link}"', f'href="{new_link}"').replace(
                     f"href='{link}'", f'href="{new_link}"')
         # src处理
-        src_list = re.findall("src='(.*?)'", source)+ re.findall('src="(.*?)"', source)
+        src_list = re.findall("src='(.*?)'", source) + \
+            re.findall('src="(.*?)"', source)
         for link in src_list:
             if any(link[:len(i)] == i for i in ['http://', "https://", '//']):
                 link_subdomain, link_full_domain, link_root_domain = self.func.get_domain_info(
@@ -284,4 +285,96 @@ class HtmlParser():
                         'http://', '//').replace('https://', '//')+my_root_domain+link_split[1]
                     source = source.replace(f'src="{link}"', f'src="{new_link}"').replace(
                         f"src='{link}'", f'src="{new_link}"')
+        return source
+
+    def dynamic_link_change(self, config, source, my_root_domain, target_root_domain, target_full_domain):
+        """链接处理 蜘蛛池动态处理"""
+        # 　link链接处理
+        tree = etree.HTML(source)
+        links = tree.xpath("//link/@href")
+        for link in links:
+            if any(link[:len(i)] == i for i in ['http://', "https://", '//']):
+                link_full_domain, link_root_domain = self.func.get_domain_info(link)[
+                    1:]
+                if link_full_domain == target_full_domain:
+                    # 目标网址转本站相对路径
+                    new_link_path = link.split(target_full_domain, 1)[1]
+                    new_link = new_link_path if new_link_path != '' else '/'
+                    source = source.replace(f'href="{link}"', f'href="{new_link}"').replace(
+                        f"href='{link}'", f'href="{new_link}"')
+                elif link_root_domain == target_root_domain:
+                    # 目标泛站网址处理为自己的泛站
+                    link_split = link.split(target_root_domain, 1)
+                    new_link = link_split[0].replace(
+                        'http://', '//').replace('https://', '//')+my_root_domain+link_split[1]
+                    source = source.replace(f'href="{link}"', f'href="{new_link}"').replace(
+                        f"href='{link}'", f'href="{new_link}"')
+        # 　a链接处理
+        a_dict = {'内链': [], '外链': [], "泛站": [], '泛站内链': []}
+        for i in tree.xpath("//a"):
+            link = link[0] if len(link := i.xpath('@href')) > 0 else ''
+            a_text = a_text[0] if len(a_text := i.xpath('text()')) > 0 else ''
+            # print(link, a_text)
+            if "javascript:" in link:
+                continue
+            # 处理所有绝对链接
+            if any(link[:len(i)] == i for i in ['http://', "https://", '//']):
+                link_full_domain, link_root_domain = self.func.get_domain_info(link)[
+                    1:]
+                if link_full_domain == target_full_domain:
+                    a_dict['内链'].append((a_text,link))
+                elif link_root_domain == target_root_domain:
+                    a_dict["泛站内链"].append((a_text,link))
+                else:
+                    # 外链处理
+                    a_dict['外链'].append((a_text,link))
+            elif link in ('#', ''):
+                a_dict['泛站'].append((a_text,link))
+            else:
+                a_dict['内链'].append((a_text,link))
+        cut_num = config['【蜘蛛池设置】']['镜像页链接转换比例']
+        random.shuffle(a_dict['内链'])
+        random.shuffle(a_dict['外链'])
+        random.shuffle(a_dict['泛站'])
+        random.shuffle(a_dict['泛站内链'])
+        new_a_dict = {
+            '内链': a_dict['内链'][:int(len(a_dict['内链'])*cut_num)],
+            '外链': a_dict['外链'][:int(len(a_dict['外链'])*cut_num)],
+            '泛站': a_dict['泛站'][:int(len(a_dict['泛站'])*cut_num)],
+            '泛站内链': a_dict['泛站内链'][:int(len(a_dict['泛站内链'])*cut_num)]
+        }
+        for k,links in new_a_dict.items():
+            for a_text,link in links:
+                new_link = "{"+k+"}"
+                if link!='/':
+                    source = source.replace(f'href="{link}"', f'href="{new_link}"').replace(f"href='{link}'", f'href="{new_link}"')
+                if len(a_text)>7:
+                    source = source.replace(f'>{a_text}</a>',">{标题}</a>")
+        # src处理
+        src_list = re.findall("src='(.*?)'", source, flags=re.I) + \
+            re.findall('src="(.*?)"', source, flags=re.I)
+        for link in src_list:
+            if any(link[:len(i)] == i for i in ['http://', "https://", '//']):
+                link_full_domain, link_root_domain = self.func.get_domain_info(link)[
+                    1:]
+                if link_full_domain == target_full_domain:
+                    # 目标网址转本站相对路径
+                    new_link_path = link.split(target_full_domain, 1)[1]
+                    new_link = new_link_path if new_link_path != '' else '/'
+                    source = source.replace(f'src="{link}"', f'src="{new_link}"').replace(
+                        f"src='{link}'", f'src="{new_link}"')
+                elif link_root_domain == target_root_domain:
+                    # 目标泛站网址处理为自己的泛站
+                    link_split = link.split(target_root_domain, 1)
+                    new_link = link_split[0].replace(
+                        'http://', '//').replace('https://', '//')+my_root_domain+link_split[1]
+                    source = source.replace(f'src="{link}"', f'src="{new_link}"').replace(
+                        f"src='{link}'", f'src="{new_link}"')
+        # title属性删除
+        title_list = re.findall("title='(.*?)'", source, flags=re.I) + \
+            re.findall('title="(.*?)"', source, flags=re.I)
+        for title in title_list:
+            source = source.replace(f'title="{title}"', '').replace(
+                f"title='{title}'", '')
+
         return source

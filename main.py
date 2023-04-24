@@ -19,7 +19,7 @@ from func.const import *
 app = FastAPI()
 # gzip流文件处理
 app.add_middleware(GZipMiddleware, minimum_size=600)
-# app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/_", StaticFiles(directory="_"), name="_")
 func = Func()
 # # 创建一个templates（模板）对象，以后可以重用。
 templates = Jinja2Templates(directory=TEM_PATH)
@@ -44,15 +44,12 @@ async def middleware(request: Request, call_next):
     """中间件 访问前后"""
     return await middle.middleware(request, call_next, func, templates)
 
-@app.get("/api/video")
-async def get_video(url: str):
-    """api 生成站长验证代码"""
-    async def iterfile():
-        async with httpx.AsyncClient() as client:
-            async with client.stream("GET", url) as r:
-                async for chunk in r.aiter_bytes():
-                    yield chunk   
-    return StreamingResponse(iterfile(), media_type="video/mp4")
+
+@app.get("/-/{path:path}")
+async def stream(path:str=''):
+    """流式代理访问"""
+    return await app.state.router.stream(path)
+
 
 @app.get("/api/verify")
 async def verify(name: str, content: str):
@@ -92,35 +89,9 @@ async def robots(request: Request):
     return await app.state.router.robots(request)
 
 
-# @app.get("/favicon.ico")
-# async def favicon():
-#     """网站图标"""
-#     return await app.state.router.favicon()
-
-
-# @app.get("/")
-# async def index(request: Request, response: Response):
-#     """首页"""
-#     # try:
-#     #     result = await app.state.router.index(request, response, tem)
-#     # except TypeError as error:
-#     #     print(error)
-#     #     result = JSONResponse(status_code=502, content={"error": '10003'})
-#     # print(request.url)
-#     result = await app.state.router.index(request, response)
-    # return result
-
-
 @app.get("{path:path}")
 async def route(request: Request, response: Response, path=''):
     """主路由"""
-    # print('path',path)
-    # url = request
-    # try:
-    #     result = await app.state.router.page(request, response, path, tem)
-    # except TypeError as error:
-    #     print(error)
-    #     result = JSONResponse(status_code=502, content={"error": '10004'})
     result = await app.state.router.route(request, response,path)
     return result
 

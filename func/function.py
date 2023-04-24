@@ -4,11 +4,13 @@
 from socket import gethostbyname
 import linecache
 import os
+import gzip
 import json
 import random
 import sys
 from urllib.parse import quote,unquote
 import aiofiles
+from PIL import Image
 import tldextract
 import jiagu
 import httpx
@@ -23,8 +25,9 @@ class Func():
         self.yaml=YAML()
         self.yaml.default_flow_style = False
         self.yaml.indent(mapping=2, sequence=4, offset=2)
+        self.errcode = self.get_yaml(ERRCODE_PATH)
 
-    async def request_get(self, url, headers=None, params=None,follow_redirects=False, use_ip='0.0.0.0'):
+    async def request_get(self, url, headers=None, params=None,follow_redirects=True, use_ip='0.0.0.0'):
         """异步访问 GET"""
         transport = httpx.AsyncHTTPTransport(local_address=use_ip)
         async with httpx.AsyncClient(http2=False, transport=transport) as client:
@@ -32,11 +35,19 @@ class Func():
         return resp
 
     async def request_post(self, url, headers=None, params=None, datas=None, use_ip='0.0.0.0'):
-        """异步访问 GET"""
+        """异步访问 POST"""
         transport = httpx.AsyncHTTPTransport(local_address=use_ip)
         async with httpx.AsyncClient(http2=False, transport=transport) as client:
             resp = await client.post(url, headers=headers, params=params, json=datas)
         return resp
+    
+    async def request_stream(self, url, headers=None, params=None,follow_redirects=True, use_ip='0.0.0.0'):
+        """异步访问 GET流式"""
+        transport = httpx.AsyncHTTPTransport(local_address=use_ip)
+        async with httpx.AsyncClient(http2=False, transport=transport) as client:
+            async with client.stream("GET", url,headers=headers, params=params,follow_redirects=follow_redirects) as r:
+                async for chunk in r.aiter_bytes():
+                    yield chunk
 
     def get_ips(self):
         """获取当前服务器所有IP"""
@@ -64,6 +75,14 @@ class Func():
                 return True
         return False
 
+    def is_url(self,url):
+        """判断url是否是网址"""
+        tld = tldextract.extract(url)
+        domain = ".".join([tld.domain, tld.suffix]).lower()
+        if domain[-1] == '.':
+            return False
+        return True
+
     def get_domain_info(self, domain):
         """获取域名前后缀"""
         tld = tldextract.extract(domain)
@@ -85,6 +104,12 @@ class Func():
         with open(path, "w", encoding="utf-8") as yml_f:
             self.yaml.dump(data, yml_f)
 
+    async def save_gz(self,data,path):
+        """保存gzip压缩文件"""
+        async with aiofiles.open(path, 'wb') as gz_f:
+            # 压缩数据
+            data_comp = gzip.compress(data.encode())
+            await gz_f.write(data_comp)
 
     def get_text(self, path):
         """文本文件解析"""
@@ -129,6 +154,13 @@ class Func():
             async with aiofiles.open(spider_json_path, 'w') as json_f:
                 await json_f.write(json.dumps(spider_data, sort_keys=True, indent=4))
         return spider_data
+    
+    def flip_image(self, picpath):
+        """翻转图片"""
+        im = Image.open(picpath)
+        new_pic = im.transpose(Image.FLIP_LEFT_RIGHT)
+        new_pic.save(picpath)
+        print(f"图片翻转成功 {picpath}")
 
     def get_text_keyword(self, text, k=1):
         """文本关键词抽取"""

@@ -1,9 +1,57 @@
+【程序信息】:
+  程序名称: 镜像蜘蛛池
+  后台域名: admin.fuck.com
 
-翻译: true
-翻译成: 繁体中文
+【自动化设置】:
+  自动主站: true
+  主站配置模板: config/base.yml
+  自动泛站: true
+  泛站配置模板: 自动
 
+【蜘蛛池设置】:
+  开启动态蜘蛛池: true
+  镜像页链接转换比例: 0.5
 
-图片盲水印: true
-图片翻转: true
-缓存图片: true
-缓存视频: true
+【泛目录设置】:
+  开启泛目录功能: true
+  链接占比设置:
+    内链: 25
+    外链: 25
+    泛站: 25
+    泛站内链: 25
+
+【目标站缓存】:
+  开启缓存: true
+  缓存页面上限: 1000
+  开启翻译: true
+  翻译成: 繁体中文
+  开启静态文件缓存: false
+  缓存静态文件名: ['.jpg','.png','.gif','.ico','.svg']
+  开启缓存图片翻转: true
+
+【访问策略】:
+  开启开放IP与非域名访问: false
+  开启搜索来路直跳广告: true
+  开启普通用户直跳广告: true
+  开启根域名跳WWW: false
+
+【访问限制】:
+  UA黑名单: "Scrapy|Curl|HttpClient|UniversalFeedParser|lightDeckReports Bot|heritrix|Java|Bytespider|YandexBot|FlightDeckReports|Indy Library|BOT/0.1|DigExt|Feedly|Swiftbot|oBot|Python-urllib|CrawlDaddy|YYSpider|JikeSpider|ZmEu|MJ12bot|WebZIP|Apache-HttpAsyncClient|HttpClient|WinHttp|jaunty|Alexa Toolbar|LinkpadBot|Microsoft URL Control|node-superagent|Ezooms|Jullo|SemrushBot|FetchURL|AhrefsBot|EasouSpider|java/|CoolpadWebkit|Linguee Bot|ApacheBench|AskTbFXTV|FeedDemon"
+  IP黑名单: "888.888.888.888|88.88.88.88"
+
+【蜘蛛设置】:
+  开启蜘蛛日志: true
+  蜘蛛静态文件访问模式: 1 # 0:屏蔽 1:开放 2:开放但不录入日志
+  蜘蛛开关:
+    百度蜘蛛: true
+    搜狗蜘蛛: true
+    神马蜘蛛: true
+    头条蜘蛛: true
+    必应蜘蛛: true
+    360蜘蛛: true
+    谷歌图片蜘蛛: false
+    谷歌蜘蛛: true
+    雅虎蜘蛛: false
+    其它蜘蛛: false
+    其他蜘蛛: false
+    普通用户: true

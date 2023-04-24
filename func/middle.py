@@ -17,7 +17,7 @@ async def middleware(request, call_next, func, templates):
     # 请求处理前计时
     start_time = time.time()
     # config = func.get_yaml(CONF_PATH)
-    print(str(request.url))
+    # print(str(request.url))
     # subdomain, full_domain, root_domain = func.get_domain_info(str(request.url))
     # # 是否开放IP直接访问
     # if not config['【访问策略】']['开放IP与非域名访问']:
