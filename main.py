@@ -19,7 +19,7 @@ from func.const import *
 app = FastAPI()
 # gzip流文件处理
 app.add_middleware(GZipMiddleware, minimum_size=600)
-app.mount("/_", StaticFiles(directory="_"), name="_")
+app.mount("/_", StaticFiles(directory=STATIC_PATH), name=STATIC_PATH)
 func = Func()
 # # 创建一个templates（模板）对象，以后可以重用。
 templates = Jinja2Templates(directory=TEM_PATH)
@@ -56,6 +56,10 @@ async def verify(name: str, content: str):
     """api 生成站长验证代码"""
     return await app.state.router.api_verify(name, content)
 
+@app.get("/api/tem")
+async def tem(request: Request,show: str):
+    """api tem模板展示"""
+    return await app.state.router.tem(request,show)
 
 @app.get("/api/spider")
 async def spider(mode='1d'):

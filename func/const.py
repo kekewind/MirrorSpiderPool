@@ -22,29 +22,34 @@ TRANS_LANG = {
     '日文': 'ja',
 }
 
+
+VERIFY_PATH = 'config/verify/'
+INDEX_DIR = "template/index/"
+
+FAVICON_PATH = "static/_/image/favicon.ico"
+SPIDER_LOG = "logs/spider"
+CACHE_PATH = 'cache/'
+CACHE_TEM_PATH = 'cache_tem/'
+
+
+ACCESS_LOG_PATH = 'logs/access.log'
 CONF_PATH = "config/config.yml"
 TAG_PATH = "config/tag.yml"
 IPS_PATH = "config/IPS.txt"
-VERIFY_PATH = 'config/verify/'
+WEB_PATH = 'web'
+TARGET_PATH = 'target'
+ERRCODE_PATH = 'config/errcode.yml'
+BASE_YML_PATH = 'config/base.yml'
 
+STATIC_PATH= "_"
+TEMPLATE_DIR = "_/template"
+
+TEM_PATH = "_"
 TEM_HTML = "others/templates.html"
 AD_HTML = "others/ad.html"
 SITEMAP_XML = "others/sitemap.xml"
 SITEMAP_TXT = "others/sitemap.txt"
 ROBOTS_TXT = "others/robots.txt"
-INDEX_DIR = "template/index/"
-PAGE_DIR = "template/page/"
-FAVICON_PATH = "static/_/image/favicon.ico"
-SPIDER_LOG = "logs/spider"
-CACHE_PATH = 'cache/'
-CACHE_TEM_PATH = 'cache_tem/'
-ACCESS_LOG_PATH = 'logs/access.log'
-
-WEB_PATH = 'web'
-TARGET_PATH = 'target'
-ERRCODE_PATH = 'config/errcode.yml'
-BASE_YML_PATH = 'config/base.yml'
-TEM_PATH = "static/template"
 
 MEDIA_TYPE = {
     ".jpeg": "image/jpeg",

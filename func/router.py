@@ -46,6 +46,14 @@ class Router():
             return JSONResponse(status_code=200, content={"errcode": 0, "info": f"{name}文件已生成"})
         return JSONResponse(status_code=404, content={"errcode": 1, "info": "验证参数错误"})
 
+    async def tem(self,request,show):
+        """api tem模板展示"""
+        template = os.path.join(TEMPLATE_DIR,show)
+        if os.path.exists(template):
+            result = self.func.get_text(template)
+            result = TagParser(request, self.func).parse(result)[0]
+            return Response(content=result, media_type="text/html")
+
     async def api_spider(self, mode):
         """api 蜘蛛数据"""
         now = arrow.now('Asia/Shanghai')
@@ -107,35 +115,37 @@ class Router():
 
     def api_web_status(self, num):
         """api 网站状态"""
-        send = os.popen(f"tail -{num} {ACCESS_LOG_PATH}")
-        access = send.read().strip().split('\n')
-        fuck = access[0].split(',')[0]
-        cha_count = 1
-        for index, i in enumerate(access):
-            if fuck not in i:
-                cha_count += index
-                break
-        re_access = access[::-1]
-        fuck2 = re_access[0].split(',')[0]
-        for index, i in enumerate(re_access):
-            if fuck2 not in i:
-                cha_count += index
-                break
-        count = len(access)-cha_count
-        start_time = arrow.get(access[0].split(',')[0][1:]).timestamp()
-        end_time = arrow.get(access[-1].split(',')[0][1:]).timestamp()
-        spend_second = end_time-start_time-1
-        qps = count/spend_second
-        result = {"QPS": qps, "querry_count": count,
-                  'spend_time': spend_second}
+        if os.path.exists(ACCESS_LOG_PATH):
+            send = os.popen(f"tail -{num} {ACCESS_LOG_PATH}")
+            access = send.read().strip().split('\n')
+            fuck = access[0].split(',')[0]
+            cha_count = 1
+            for index, i in enumerate(access):
+                if fuck not in i:
+                    cha_count += index
+                    break
+            re_access = access[::-1]
+            fuck2 = re_access[0].split(',')[0]
+            for index, i in enumerate(re_access):
+                if fuck2 not in i:
+                    cha_count += index
+                    break
+            count = len(access)-cha_count
+            start_time = arrow.get(access[0].split(',')[0][1:]).timestamp()
+            end_time = arrow.get(access[-1].split(',')[0][1:]).timestamp()
+            spend_second = end_time-start_time-1
+            qps = count/spend_second
+            result = {"QPS": qps, "querry_count": count,
+                    'spend_time': spend_second}
+        else:
+            return {'不存在日志文件':ACCESS_LOG_PATH}
         return result
 
     async def template_list(self, request):
         """模板列表"""
-        index_tems = sorted(os.listdir(INDEX_DIR))
-        page_tems = sorted(os.listdir(PAGE_DIR))
+        tems = sorted(os.listdir(TEMPLATE_DIR))
         datas = {"request": request,
-                 "urls": index_tems, "page_urls": page_tems}
+                 "urls": [], "page_urls": tems}
         return self.templates.TemplateResponse(TEM_HTML, datas, media_type='text/html;charset=utf-8')
 
     async def sitemap(self, request, path=''):
