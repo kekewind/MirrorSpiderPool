@@ -3,6 +3,7 @@
 《蜘蛛池》 by TG@seo888
 """
 
+from concurrent.futures import ThreadPoolExecutor
 import aiomysql
 import httpx
 import uvicorn
@@ -19,10 +20,12 @@ from func.const import *
 app = FastAPI()
 # gzip流文件处理
 app.add_middleware(GZipMiddleware, minimum_size=600)
-app.mount("/_", StaticFiles(directory=STATIC_PATH), name=STATIC_PATH)
+app.mount(f"/{STATIC_PATH}", StaticFiles(directory=STATIC_PATH), name=STATIC_PATH)
 func = Func()
 # # 创建一个templates（模板）对象，以后可以重用。
 templates = Jinja2Templates(directory=TEM_PATH)
+# 线程管理
+executor = ThreadPoolExecutor(32)
 
 @app.on_event("startup")
 async def _startup():
@@ -37,7 +40,7 @@ async def _startup():
 #     #     host=host, port=port, user=user, password=password, db=dbname,maxsize=65535
 #     # )
 #     # 路由引用
-    app.state.router = Router(templates)
+    app.state.router = Router(executor,templates)
 
 @app.middleware("http")
 async def middleware(request: Request, call_next):

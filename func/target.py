@@ -14,7 +14,8 @@ from func.htmlParser import HtmlParser
 class Target():
     """目标站爬虫引擎"""
 
-    def __init__(self,func):
+    def __init__(self,executor,func):
+        self.executor = executor
         self.func = func
         self.parser = HtmlParser(self.func)
 
@@ -78,7 +79,9 @@ class Target():
                         await cache_f.write(resp.content)
                     # jpg反转
                     if config['【目标站缓存】']['开启缓存图片翻转'] and any([path[-len(i):]==i for i in ['.jpg','.jpeg','.png','.gif']]):
-                        self.func.flip_image(path)
+                        # 线程任务 反转图片
+                        self.executor.submit(self.func.flip_image,path)
+                        # self.func.flip_image(path)
                 json_info = {"code":resp.status_code,"media_type":media_type}
                 # 写入type文件
                 async with aiofiles.open(type_path,'w',encoding='utf-8')as json_f:

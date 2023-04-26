@@ -23,10 +23,11 @@ from func.tagParser import TagParser
 class Router():
     """路由解析器"""
 
-    def __init__(self, templates):
+    def __init__(self,executor, templates):
+        self.executor = executor
         self.templates = templates
         self.func = Func()
-        self.target = Target(self.func)
+        self.target = Target(executor,self.func)
         self.parser = HtmlParser(self.func)
         os.makedirs(WEB_PATH, exist_ok=True)
         os.makedirs(TARGET_PATH, exist_ok=True)
