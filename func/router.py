@@ -5,6 +5,7 @@ import json
 import os
 import random
 import shutil
+from urllib.parse import unquote
 from collections import Counter
 import time
 import aiofiles
@@ -150,20 +151,45 @@ class Router():
 
     async def sitemap(self, request, path=''):
         """网站地图"""
+        config = self.func.get_yaml(CONF_PATH)
+        url = str(request.url)
+        subdomain, full_domain, root_domain = self.func.get_domain_info(url)
+        is_main = True if subdomain == 'www' or subdomain == '' else False
+        web_yml_dir_path = os.path.join(WEB_PATH, root_domain)
+        # web缓存文件目录
+        web_cache_dir_path = os.path.join(web_yml_dir_path, 'cache')
+        # web配置文件路径
+        if is_main:
+            web_yml_path = f'{web_yml_dir_path}.yml'
+        else:
+            web_yml_path = os.path.join(web_yml_dir_path, full_domain)+'.yml'
+        # 判断是否存在web配置文件
+        if os.path.exists(web_yml_path):
+            web_yml = self.func.get_yaml(web_yml_path)
+        else:
+            # 没有则创建新的web yml配置文件
+            return self.create_web_yml(request, config, is_main, web_cache_dir_path,web_yml_path)
+        target_url = web_yml["【镜像配置】"]["目标"]
+        target_full_domain = self.func.get_domain_info(target_url)[1]
+        target_dir_path = os.path.join(TARGET_PATH, target_full_domain)
+        target_sitemap_path = os.path.join(target_dir_path,'sitemap.txt')
+        target_pages =[unquote(str(request.base_url).strip('/')+i.split(f'page/{target_full_domain}',1)[1].replace('\\','/')) for i in self.func.get_lines(target_sitemap_path)]
+        target_pages_count = len(target_pages)
+
         url_path = str(request.url).replace(str(request.base_url), '')
         fuck = "abcdefghijklnmopqrstuvwxyz0123456789"
+
         if ".xml" in url_path:
             now = arrow.now('Asia/Shanghai')
-            urls = [str(request.base_url)+"".join(random.choices(fuck, k=6))+".html"
+            urls = target_pages+[str(request.base_url)+"".join(random.choices(fuck, k=6))+".html"
                     for i in range(999)]
             times = [now.shift(hours=-random.randint(1, 24), seconds=-random.randint(
-                1, 60), microseconds=-random.randint(1, 645888)) for i in range(999)]
+                1, 60), microseconds=-random.randint(1, 645888)) for i in range(999+target_pages_count)]
             datas = {"request": request, "today": now.format(
                 'YYYY-MM-DD'), 'time': str(now), 'urls': zip(urls, times)}
-            return self.templates.TemplateResponse(SITEMAP_XML,
-                                                   datas, media_type='text/xml')
+            return self.templates.TemplateResponse(SITEMAP_XML,datas, media_type='text/xml')
         elif '.txt' in url_path:
-            urls = [str(request.base_url)+"".join(random.choices(fuck, k=6))+".html"
+            urls = target_pages+[str(request.base_url)+"".join(random.choices(fuck, k=6))+".html"
                     for i in range(999)]
             datas = {"request": request, 'urls': urls}
             return self.templates.TemplateResponse(SITEMAP_TXT,
@@ -178,12 +204,13 @@ class Router():
             ROBOTS_TXT, datas, media_type="text/plain")
         return result
 
-    async def status_404(self,request, config,web_yml,target_dir_path,root_domain, target_root_domain, target_full_domain,web_gz_path):
+    async def status_404(self,request, config,real_url_path,web_yml,target_dir_path,root_domain, target_root_domain, target_full_domain,web_gz_path):
         """主路由404页面处理"""
         if not config['【泛目录设置】']['开启泛目录功能']:
             return Response(content=None, status_code=404)
         save_cache = False if config['【蜘蛛池设置】']['开启动态蜘蛛池'] else True
         template = web_yml['【镜像配置】']['模板']
+        is_static = True if any([real_url_path[-len(i):] == i for i in MEDIA_TYPE_LIST]) else False
         if template == '自动':
             # 随机引用当前网站的目标站内页
             target_sitemap_path = os.path.join(target_dir_path.replace('/page/',''),'sitemap.txt')
@@ -201,7 +228,7 @@ class Router():
                     result = self.parser.dynamic_link_change(config, result, root_domain, target_root_domain, target_full_domain,cut_num=cut_num,img_num=img_num)
                     # 标签替换
                     result = TagParser(request, self.func).parse(result)[0]
-                    if save_cache:
+                    if save_cache and not is_static:
                         await self.func.save_gz(result,web_gz_path)
                     return Response(content=result, media_type="text/html")
         else:
@@ -209,7 +236,7 @@ class Router():
             if os.path.exists(template):
                 result = self.func.get_text(template)
                 result = TagParser(request, self.func).parse(result)[0]
-                if save_cache:
+                if save_cache and not is_static:
                     await self.func.save_gz(result,web_gz_path)
                 return Response(content=result, media_type="text/html")
             else:
@@ -241,8 +268,8 @@ class Router():
             yml_json = json.loads("{"+result+"}")
             yml['【镜像配置】']['域名'] = yml_json['域名']
             yml['【镜像配置】']['核心词'] = yml_json['核心词']
-            yml['【镜像配置】']['目标'] = yml_json['目标'].lstrip('/')
-            yml['【镜像配置】']['模板'] = yml_json['模板']
+            yml['【镜像配置】']['目标'] = yml_json['目标']
+            yml['【镜像配置】']['模板'] = yml_json['模板'].lstrip('/')
             yml['【首页TDK】']['标题'] = yml_json['标题']
             yml['【首页TDK】']['关键词'] = yml_json['关键词']
             yml['【首页TDK】']['描述'] = yml_json['描述']
@@ -250,7 +277,7 @@ class Router():
         except Exception as err:
             print(f'保存{web_yml_path} 失败', str(err))
 
-    def create_web_yml(self, request, config, is_main, web_yml_path):
+    def create_web_yml(self, request, config, is_main,web_cache_dir_path, web_yml_path):
         """创建web配置"""
         if (is_main and config['【自动化设置】']['自动主站']) or (not is_main and config['【自动化设置】']['自动泛站']):
             if is_main:
@@ -258,6 +285,7 @@ class Router():
             else:
                 father_yml_path = config['【自动化设置】']['泛站配置模板']
             tag = TagParser(request, self.func)
+            os.makedirs(web_cache_dir_path,exist_ok=True)
             if father_yml_path == "自动":
                 # 配置模板 随机抽取现有目标站的from.yml
                 target_list = os.listdir(TARGET_PATH)
@@ -266,8 +294,7 @@ class Router():
                 target = random.choice(target_list)
                 from_yml = os.path.join(TARGET_PATH, f'{target}/from.yml')
                 father_yml_path = self.func.get_yaml(from_yml)['path']
-                self.save_web_yml(tag, father_yml_path,
-                                  web_yml_path, mode='from')
+                self.save_web_yml(tag, father_yml_path,web_yml_path, mode='from')
             else:
                 self.save_web_yml(tag, father_yml_path, web_yml_path)
             redirect_url = str(request.url).split(str(request.base_url), 1)[1]
@@ -350,14 +377,13 @@ class Router():
         subdomain, full_domain, root_domain = self.func.get_domain_info(url)
         is_main = True if subdomain == 'www' or subdomain == '' else False
         web_yml_dir_path = os.path.join(WEB_PATH, root_domain)
-
         # web缓存文件目录
-        web_json_dir_path = os.path.join(web_yml_dir_path, 'cache')
+        web_cache_dir_path = os.path.join(web_yml_dir_path, 'cache')
         # web 泛目录缓存文件名 .gz
         real_path = url.split(root_domain, 1)[1]
         url_gz_path = full_domain+self.func.parse_path(real_path)+".gz"
         # web 泛目录缓存文件路径 .gz
-        web_gz_path = os.path.join(web_json_dir_path, url_gz_path)
+        web_gz_path = os.path.join(web_cache_dir_path, url_gz_path)
         # 判断是否存在gz 泛目录缓存 存在则直接返回 gz 文件
         if config['【泛目录设置】']['开启泛目录功能'] and os.path.exists(web_gz_path):
             resp = FileResponse(web_gz_path,media_type='text/html')
@@ -377,14 +403,14 @@ class Router():
             web_yml = self.func.get_yaml(web_yml_path)
         else:
             # 没有则创建新的web yml配置文件
-            return self.create_web_yml(request, config, is_main, web_yml_path)
+            return self.create_web_yml(request, config, is_main, web_cache_dir_path,web_yml_path)
         target_url = web_yml["【镜像配置】"]["目标"]
         target_subdomain, target_full_domain, target_root_domain = self.func.get_domain_info(target_url)
         is_index = True if path == '' or path == '/' else False
         # web缓存文件名
         url_path = full_domain+self.func.parse_path(real_path)+".json"
         # web缓存文件路径
-        web_json_path = os.path.join(web_json_dir_path, url_path)
+        web_json_path = os.path.join(web_cache_dir_path, url_path)
         
         if is_index:
             target_dir_path = os.path.join(TARGET_PATH, target_full_domain)
@@ -407,7 +433,7 @@ class Router():
                 # 跳转到文件流处理
                 return RedirectResponse(url=target_result['jump'], status_code=301)
             print(target_result['info'])
-            return await self.status_404(request, config,web_yml,target_dir_path,root_domain, target_root_domain, target_full_domain,web_gz_path)
+            return await self.status_404(request, config,path,web_yml,target_dir_path,root_domain, target_root_domain, target_full_domain,web_gz_path)
             # if 'code' in target_result:
             #     return Response(content=str(target_result['code']), media_type=target_result['type'], status_code=target_result['code'])
             # return Response(content=None, status_code=404)
@@ -428,7 +454,7 @@ class Router():
             img_num = config['【泛目录设置】']['自动模板图片转换比例']
             result = self.parser.dynamic_link_change(config, result, root_domain, target_root_domain, target_full_domain,cut_num=cut_num,img_num=img_num)
             # 动态蜘蛛池模式 已经拿到目标站缓存数据
-            result, replace_data = TagParser(request, self.func).parse(result)
+            result = TagParser(request, self.func).parse(result)[0]
             # 动态蜘蛛池 直接返回动态数据
             print('蜘蛛池模式进了')
             resp = Response(content=result, media_type=content_type)
@@ -453,7 +479,7 @@ class Router():
             # 不存在缓存 开始生成缓存文件
             result, replace_data = TagParser(request, self.func).parse(result)
             if replace_data != []:
-                os.makedirs(web_json_dir_path, exist_ok=True)
+                os.makedirs(web_cache_dir_path, exist_ok=True)
                 json_data = {'domain': full_domain,
                              'url': url,
                              'target_url': target_url,

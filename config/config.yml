@@ -29,7 +29,7 @@
   开启翻译: true
   翻译成: 繁体中文
   开启静态文件缓存: true
-  缓存静态文件名: ['.jpg','.png','.gif','.svg','.ico']
+  缓存静态文件名: ['.css', '.js', '.png', '.jpg', '.ico','.svg', '.gif', '.jpeg', '.woff', '.woff2']
   开启缓存图片翻转: true
 
 【访问策略】:

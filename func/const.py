@@ -51,7 +51,10 @@ SITEMAP_XML = "others/sitemap.xml"
 SITEMAP_TXT = "others/sitemap.txt"
 ROBOTS_TXT = "others/robots.txt"
 
+
 MEDIA_TYPE = {
+    ".css":'',
+    ".js":'',
     ".jpeg": "image/jpeg",
     ".jpg": "image/jpeg",
     ".mp3": "audio/mpeg",
@@ -64,6 +67,10 @@ MEDIA_TYPE = {
     ".gz": "application/x-gzip",
     ".3gp": "video/3gpp",
     ".flv": "flv-application/octet-stream",
+    ".woff":'font/woff',
+    ".woff2":'font/woff2',
+    ".otf":"font/otf",
+    ".sfnt":"font/sfnt",
     ".aif": "audio/x-aiff",
     ".aifc": "audio/x-aiff",
     ".aiff": "audio/x-aiff",
@@ -321,3 +328,4 @@ MEDIA_TYPE = {
     ".xpm": "image/x-xpixmap",
     ".xwd": "image/x-xwindowdump",
 }
+MEDIA_TYPE_LIST = list(MEDIA_TYPE.keys())

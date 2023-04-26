@@ -45,17 +45,10 @@ async def middleware(request, call_next, func, templates):
             new_url = str(request.url).replace(
                 'http://', "http://www.").replace('https://', "https://www.")
             return RedirectResponse(url=new_url, status_code=301)
-    # 拦截所有静态文件请求 非static 转发到static
-    # url_path = str(request.url).replace(str(request.base_url), '')
-    # real_url_path = url_path.split('?', maxsplit=1)[0]
-    # static_files = ['.css', '.js', '.png', '.jpg', '.ico',
-    #                 '.svg', '.gif', '.jpeg', '.woff', '.woff2']
-    # is_static = False
-    # is_user = False
-    # if any([real_url_path[-len(i):] == i for i in static_files]):
-    #     is_static = True
-    #     if url_path != "favicon.ico" and url_path[:len(STATIC_PATH)+1] != f"{STATIC_PATH}/":
-    #         return RedirectResponse(url=f"/{STATIC_PATH}/{url_path}", status_code=301)
+    url_path = str(request.url).replace(str(request.base_url), '')
+    real_url_path = url_path.split('?', maxsplit=1)[0]
+    is_user = False
+    is_static = True if any([real_url_path[-len(i):] == i for i in MEDIA_TYPE_LIST]) else False
     # 写入本地蜘蛛日志
     if config["【蜘蛛设置】"]['开启蜘蛛日志']:
         now = arrow.now('Asia/Shanghai')
@@ -74,10 +67,10 @@ async def middleware(request, call_next, func, templates):
                 if spider_name == '普通用户':
                     is_user = True
                 elif is_static:
-                    if config["【蜘蛛设置】"]['静态文件访问'] == 0:
+                    if config["【蜘蛛设置】"]['开启蜘蛛日志'] == 0:
                         # 触发蜘蛛静态资源访问屏蔽
                         return JSONResponse(status_code=403, content={"静态资源访问禁止": str(request.url), "UA": res_ua})
-                    elif config["【蜘蛛设置】"]['静态文件访问'] == 2:
+                    elif config["【蜘蛛设置】"]['开启蜘蛛日志'] == 2:
                         # 触发蜘蛛静态资源开放但不录入日志
                         break
                 # 解析yaml配置文件

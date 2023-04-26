@@ -64,13 +64,14 @@ class Target():
                     resp_text = self.decode(resp.content)
                     # 保存前清洁
                     result = self.parser.clean(resp_text)
-                    async with aiofiles.open(path,'w')as cache_f:
-                        await cache_f.write(result)
-                    if 'htm' in media_type and '/page/' in target_dir:
-                        # 写入sitemap.txt
-                        sitemap = os.path.join(target_dir.replace('/page/',''),'sitemap.txt')
-                        async with aiofiles.open(sitemap,'a',encoding='utf-8')as txt_f:
-                            await txt_f.write(path+"\n")
+                    if len(resp_text.strip())>0:
+                        async with aiofiles.open(path,'w')as cache_f:
+                            await cache_f.write(result)
+                        if 'htm' in media_type and '/page/' in target_dir:
+                            # 写入sitemap.txt
+                            sitemap = os.path.join(target_dir.replace('/page/',''),'sitemap.txt')
+                            async with aiofiles.open(sitemap,'a',encoding='utf-8')as txt_f:
+                                await txt_f.write(path+"\n")
                 else:
                     # 保存二进制文件
                     async with aiofiles.open(path,'wb')as cache_f:
