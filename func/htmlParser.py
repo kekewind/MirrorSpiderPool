@@ -108,11 +108,21 @@ class HtmlParser():
                 '<head>', f'<head>\n<title>{title}</title>')
         # 单行替换
         for i in replace_line:
-            if len(line := i.split(" -> ", 1)) == 2:
+            if '----------' in i and '##########' in i:
+                # -#替换格式兼容
+                for line in i.split('##########'):
+                    if len(line_list:=line.split('----------'))==2:
+                        try:
+                            source = source.replace(line_list[0], line_list[1])
+                        except Exception as err:
+                            print(i, str(err))
+            elif len(line := i.split(" -> ", 1)) == 2:
                 try:
                     source = source.replace(line[0], line[1])
                 except Exception as err:
                     print(i, str(err))
+            else:
+                print(i, '替换格式错误')
         # 多行替换
         for i in re.findall('r`([\s\S]*?)``([\s\S]*?)`', replace_lines):
             source = re.sub(i[0], i[1], source)
@@ -122,11 +132,21 @@ class HtmlParser():
             source = source.replace(i[0], i[1])
         # 全局单行替换
         for i in global_replace_line:
-            if len(line := i.split(" -> ", 1)) == 2:
+            if '----------' in i and '##########' in i:
+                # -#替换格式兼容
+                for line in i.split('##########'):
+                    if len(line_list:=line.split('----------'))==2:
+                        try:
+                            source = source.replace(line_list[0], line_list[1])
+                        except Exception as err:
+                            print(i, str(err))
+            elif len(line := i.split(" -> ", 1)) == 2:
                 try:
                     source = source.replace(line[0], line[1])
                 except Exception as err:
                     print(i, str(err))
+            else:
+                print(i, '替换格式错误')
         # 全局多行替换
         for i in re.findall('r`([\s\S]*?)``([\s\S]*?)`', global_replace_lines):
             source = re.sub(i[0], i[1], source)
@@ -183,11 +203,21 @@ class HtmlParser():
                 '<head>', f'<head>\n<title>{title}</title>')
         # 单行替换
         for i in replace_line:
-            if len(line := i.split(" -> ", 1)) == 2:
+            if '----------' in i and '##########' in i:
+                # -#替换格式兼容
+                for line in i.split('##########'):
+                    if len(line_list:=line.split('----------'))==2:
+                        try:
+                            source = source.replace(line_list[0], line_list[1])
+                        except Exception as err:
+                            print(i, str(err))
+            elif len(line := i.split(" -> ", 1)) == 2:
                 try:
                     source = source.replace(line[0], line[1])
                 except Exception as err:
                     print(i, str(err))
+            else:
+                print(i, '替换格式错误')
         # 多行替换
         for i in re.findall('r`([\s\S]*?)``([\s\S]*?)`', replace_lines):
             source = re.sub(i[0], i[1], source)
@@ -197,11 +227,21 @@ class HtmlParser():
             source = source.replace(i[0], i[1])
         # 全局单行替换
         for i in global_replace_line:
-            if len(line := i.split(" -> ", 1)) == 2:
+            if '----------' in i and '##########' in i:
+                # -#替换格式兼容
+                for line in i.split('##########'):
+                    if len(line_list:=line.split('----------'))==2:
+                        try:
+                            source = source.replace(line_list[0], line_list[1])
+                        except Exception as err:
+                            print(i, str(err))
+            elif len(line := i.split(" -> ", 1)) == 2:
                 try:
                     source = source.replace(line[0], line[1])
                 except Exception as err:
                     print(i, str(err))
+            else:
+                print(i, '替换格式错误')
         # 全局多行替换
         for i in re.findall('r`([\s\S]*?)``([\s\S]*?)`', global_replace_lines):
             source = re.sub(i[0], i[1], source)
