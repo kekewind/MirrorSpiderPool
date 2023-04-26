@@ -27,12 +27,12 @@ class TagParser():
                 continue
             if isinstance(value, str):
                 tem = tem.replace(tag_text, value)
-                self.replace_data.append((tag_text,value))
+                self.replace_data.append((tag_text,value,0))
             else:
                 for _ in re.findall(tag_text, tem):
                     value_ = random.choice(value)
-                    tem = tem.replace(tag_text, value_, 1)
-                    self.replace_data.append((tag_text,value_))
+                    tem = tem.replace(tag_text, value_)
+                    self.replace_data.append((tag_text,value_,0))
         return tem
 
     def extract_line(self, tag, tem):
@@ -53,7 +53,7 @@ class TagParser():
                     linecache.checkcache(file_path)
                     random_content = random.choice(linecache.getlines(file_path)).strip()
                     tem = tem.replace(tag_text, random_content, 1)
-                    self.replace_data.append((tag_text,random_content))
+                    self.replace_data.append((tag_text,random_content,1))
                 # 处理带ID
                 t_texts = list(set(re.findall(tag_text[:-1]+"\d+}", tem)))
                 for t_text in t_texts:
@@ -61,7 +61,7 @@ class TagParser():
                     linecache.checkcache(file_path)
                     random_content = random.choice(linecache.getlines(file_path)).strip()
                     tem = tem.replace(t_text, random_content)
-                    self.replace_data.append((t_text,random_content))
+                    self.replace_data.append((t_text,random_content,0))
             else:
                 for _ in re.findall(tag_text, tem):
                     file_path = random.choice(file)
@@ -75,7 +75,7 @@ class TagParser():
                     linecache.checkcache(file_path)
                     random_content = random.choice(linecache.getlines(file_path)).strip()
                     tem = tem.replace(tag_text, random_content, 1)
-                    self.replace_data.append((tag_text,random_content))
+                    self.replace_data.append((tag_text,random_content,1))
                 # 处理带ID
                 t_texts = list(set(re.findall(tag_text[:-1]+"\d+}", tem)))
                 for t_text in t_texts:
@@ -90,7 +90,7 @@ class TagParser():
                     linecache.checkcache(file_path)
                     random_content = random.choice(linecache.getlines(file_path)).strip()
                     tem = tem.replace(t_text, random_content)
-                    self.replace_data.append((t_text,random_content))
+                    self.replace_data.append((t_text,random_content,0))
         return tem
 
     def extract_line0(self, tag, tem):
@@ -128,7 +128,7 @@ class TagParser():
                         for word in keywords:
                             random_content = random_content.replace(word,text,1)
                     tem = tem.replace(_, random_content, 1)
-                    self.replace_data.append((_,random_content))
+                    self.replace_data.append((_,random_content,1))
             else:
                 for _ in re.findall(re_tag_text, tem):
                     file_path = random.choice(file)
@@ -159,7 +159,7 @@ class TagParser():
                         for word in keywords:
                             random_content = random_content.replace(word,text,1)
                     tem = tem.replace(_, random_content, 1)
-                    self.replace_data.append((_,random_content))
+                    self.replace_data.append((_,random_content,1))
         return tem
 
 
@@ -171,7 +171,7 @@ class TagParser():
             custom_string = "{"+k[:2]+"4-6"+k[2:]+"}"
             if tag_text in tem:
                 tem = tem.replace(tag_text, custom_string)
-                self.replace_data.append((tag_text,custom_string))
+                self.replace_data.append((tag_text,custom_string,0))
             # 处理数量
             tag_head = k[:2]
             tag_foot = k[2:]
@@ -181,7 +181,7 @@ class TagParser():
                 while tag_text in tem:
                     content = "".join(random.choices(value, k=int(count)))
                     tem = tem.replace(tag_text, content, 1)
-                    self.replace_data.append((tag_text,content))
+                    self.replace_data.append((tag_text,content,1))
             # 处理随机数量
             random_count_tag = list(set(re.findall("{"+f'{tag_head}(\d+)-(\d+){tag_foot}'+"}", tem)))
             for random_count in random_count_tag:
@@ -192,7 +192,7 @@ class TagParser():
                             int(random_count[0]), int(random_count[1]))
                         content = "".join(random.choices(value, k=int(count)))
                         tem = tem.replace(tag_text, content, 1)
-                        self.replace_data.append((tag_text,content))
+                        self.replace_data.append((tag_text,content,1))
         return tem
 
     def get_info(self, tag, tem):
@@ -217,7 +217,7 @@ class TagParser():
             elif i == "当前url":
                 text = str(self.request.url)
             tem = tem.replace(tag_text, text)
-            self.replace_data.append((tag_text,text))
+            self.replace_data.append((tag_text,text,0))
         return tem
 
     def extract_file_path(self, tag, tem):
@@ -231,7 +231,7 @@ class TagParser():
                 for _ in re.findall(tag_text, tem):
                     file_path = "/"+random.choice(file_paths)
                     tem = tem.replace(tag_text, file_path, 1)
-                    self.replace_data.append((tag_text,file_path))
+                    self.replace_data.append((tag_text,file_path,1))
         return tem
 
     def html_coding(self,tem):
@@ -241,7 +241,7 @@ class TagParser():
             if self.func.exists_chinese(i):
                 code_word = self.func.transcoding(i)
                 tem = tem.replace("{"+i+"}",code_word)
-                self.replace_data.append(("{"+i+"}",code_word))
+                self.replace_data.append(("{"+i+"}",code_word,0))
         return tem
 
     def get_title(self,tem):

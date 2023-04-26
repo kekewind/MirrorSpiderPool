@@ -475,7 +475,10 @@ class Router():
             replace_data = json.loads(json_text)['replace']
             # html 标签处理替换
             for i in replace_data:
-                result = result.replace(i[0], i[1],1)
+                if i[2]:
+                    result = result.replace(i[0], i[1],1)
+                else:
+                    result = result.replace(i[0], i[1])
         else:
             # 不存在缓存 开始生成缓存文件
             result, replace_data = TagParser(request, self.func).parse(result)
