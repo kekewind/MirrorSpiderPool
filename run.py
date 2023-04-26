@@ -11,7 +11,7 @@ def createj_nginx_conf(port):
     "自动创建nginx配置文件"
     if not os.path.exists("logs"):
         os.makedirs("./logs")
-    path = "/www/server/panel/vhost/nginx/SpiderPool.conf"
+    path = "/www/server/panel/vhost/nginx/MirrorSpiderPool.conf"
     if os.path.exists(path):
         with open(path, "r", encoding='utf8') as f:
             conf = f.read()
@@ -47,7 +47,7 @@ def createj_nginx_conf(port):
     # 承接上面的location。
     location = /50x.html {
     # 放错误页面的目录路径。当然默认可以在网站目录下，也可以定义放置错误页面的位置。
-        root   /www/wwwroot/SpiderPool/template/others;
+        root   /www/wwwroot/MirrorSpiderPool/_/others;
     }
 }""".replace("【端口号】", port)
         with open(path, "w", encoding='utf8') as f:
