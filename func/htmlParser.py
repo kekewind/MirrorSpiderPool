@@ -76,7 +76,6 @@ class HtmlParser():
             # 转码处理
             if conf["【首页TDK】"]['转码'] and '{' not in des:
                 des = self.func.transcoding(des)
-            print(des)
             # 删除description
             source = re.sub(r'<meta.*?name="Description".*?/>',
                             "", source, flags=re.I)
@@ -171,7 +170,6 @@ class HtmlParser():
             # 转码处理
             if conf["【首页TDK】"]['转码'] and '{' not in des:
                 des = self.func.transcoding(des)
-            print(des)
             # 删除description
             source = re.sub('<meta.*?name="Description".*?/>',
                             "", source, flags=re.I)
@@ -459,11 +457,11 @@ class HtmlParser():
                     source = source.replace(f'src="{link}"', f'src="{new_link}"').replace(
                         f"src='{link}'", f'src="{new_link}"')
         # title属性删除
-        title_list = re.findall("title='(.*?)'", source, flags=re.I) + \
-            re.findall('title="(.*?)"', source, flags=re.I)
+        title_list = re.findall(" title='(.*?)'", source, flags=re.I) + \
+            re.findall(' title="(.*?)"', source, flags=re.I)
         for title in title_list:
-            source = source.replace(f'title="{title}"', '').replace(
-                f"title='{title}'", '')
+            source = source.replace(f' title="{title}"', '').replace(
+                f" title='{title}'", '')
         tree = etree.HTML(source)
         # h标签文章处理
         title_count = 0

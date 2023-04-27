@@ -38,6 +38,7 @@ TAG_PATH = "config/tag.yml"
 IPS_PATH = "config/IPS.txt"
 WEB_PATH = 'web'
 TARGET_PATH = 'target'
+TAGET_INFO_NAME = 'info.yml'
 ERRCODE_PATH = 'config/errcode.yml'
 BASE_YML_PATH = 'config/base.yml'
 
@@ -51,6 +52,11 @@ SITEMAP_XML = "others/sitemap.xml"
 SITEMAP_TXT = "others/sitemap.txt"
 ROBOTS_TXT = "others/robots.txt"
 
+TRANS_DICT = {
+    '简体中文':'zh-CHS',
+    '繁体中文':'zh-CHT',
+    '英文':'en',
+}
 
 MEDIA_TYPE = {
     ".css":'',

@@ -11,6 +11,7 @@ import random
 import sys
 from urllib.parse import quote,unquote
 import aiofiles
+from zhconv import convert
 from PIL import Image
 import tldextract
 import jiagu
@@ -32,14 +33,14 @@ class Func():
         """异步访问 GET"""
         transport = httpx.AsyncHTTPTransport(local_address=use_ip)
         async with httpx.AsyncClient(http2=False, transport=transport) as client:
-            resp = await client.get(url, headers=headers, params=params,follow_redirects=follow_redirects)
+            resp = await client.get(url, headers=headers, params=params,follow_redirects=follow_redirects,timeout=15)
         return resp
 
     async def request_post(self, url, headers=None, params=None, datas=None, use_ip='0.0.0.0'):
         """异步访问 POST"""
         transport = httpx.AsyncHTTPTransport(local_address=use_ip)
         async with httpx.AsyncClient(http2=False, transport=transport) as client:
-            resp = await client.post(url, headers=headers, params=params, json=datas)
+            resp = await client.post(url, headers=headers, params=params, json=datas,timeout=15)
         return resp
     
     async def request_stream(self, url, headers=None, params=None,follow_redirects=True, use_ip='0.0.0.0'):
@@ -47,7 +48,7 @@ class Func():
         transport = httpx.AsyncHTTPTransport(local_address=use_ip)
         async with httpx.AsyncClient(http2=False, transport=transport) as client:
             try:
-                async with client.stream("GET", url,headers=headers, params=params,follow_redirects=follow_redirects) as r:
+                async with client.stream("GET", url,headers=headers, params=params,follow_redirects=follow_redirects,timeout=15) as r:
                     async for chunk in r.aiter_bytes():
                         yield chunk
             except Exception as err:
@@ -142,6 +143,10 @@ class Func():
     def unescape(self,string):
         """html实体解码"""
         return html.unescape(string)
+
+    def to_hant(self,string):
+        """简体转繁体"""
+        return convert(string, 'zh-hant')
 
     async def get_file_count(self, file_path):
         """快速获取文档行数"""

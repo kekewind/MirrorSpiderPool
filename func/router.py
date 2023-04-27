@@ -288,13 +288,13 @@ class Router():
             tag = TagParser(request, self.func)
             os.makedirs(web_cache_dir_path,exist_ok=True)
             if father_yml_path == "自动":
-                # 配置模板 随机抽取现有目标站的from.yml
+                # 配置模板 随机抽取现有目标站的{TAGET_INFO_NAME}
                 target_list = os.listdir(TARGET_PATH)
                 if len(target_list) <= 5:
                     return JSONResponse(status_code=404, content={"errcode": "10002", "info": self.func.errcode['10002']})
                 target = random.choice(target_list)
-                from_yml = os.path.join(TARGET_PATH, f'{target}/from.yml')
-                father_yml_path = self.func.get_yaml(from_yml)['path']
+                target_info_path = os.path.join(TARGET_PATH, f'{target}/{TAGET_INFO_NAME}')
+                father_yml_path = self.func.get_yaml(target_info_path)['path']
                 self.save_web_yml(tag, father_yml_path,web_yml_path, mode='from')
             else:
                 self.save_web_yml(tag, father_yml_path, web_yml_path)
@@ -304,17 +304,40 @@ class Router():
         else:
             return JSONResponse(status_code=404, content={"errcode": "10001", "info": self.func.errcode['10001']})
 
-    async def get_target_content(self, config, is_index, path,target_dir_path, target_path,target_url, web_yml_path):
+    async def get_target_cache(self,config,target_info,target_path,target_type_path,is_index):
+        '''获取目标站缓存'''
+        if config['【目标站缓存】']['开启翻译']:
+            _trans = TRANS_DICT[config['【目标站缓存】']['翻译成']]
+            if _trans==target_info['lang']:
+                print(f"目标站语言为{target_info['lang']} 翻译成：{config['【目标站缓存】']['翻译成']} 不需要翻译 直接返回原网页")
+                if is_index:
+                    target_content, content_type = await self.target.linecache_get(target_path, target_type_path)
+                else:
+                    target_content, content_type = await self.target.get(target_path, target_type_path)
+                # 存在缓存 直接返回
+                return {'success': True, 'content': target_content, 'type': content_type,"X-Request-Time":0}
+            if os.path.exists(target_path+f'.{_trans}'):
+                print(f'存在目标站翻译缓存：{target_path}.{_trans}')
+                if is_index:
+                    target_content, content_type = await self.target.linecache_get(target_path+f'.{_trans}', target_type_path)
+                else:
+                    target_content, content_type = await self.target.get(target_path+f'.{_trans}', target_type_path)
+                # 存在缓存 直接返回
+                return {'success': True, 'content': target_content, 'type': content_type,"X-Request-Time":0}
+        print(f'存在目标站缓存：{target_path}')
+        if is_index:
+            target_content, content_type = await self.target.linecache_get(target_path, target_type_path)
+        else:
+            target_content, content_type = await self.target.get(target_path, target_type_path)
+        # 存在缓存 直接返回
+        return {'success': True, 'content': target_content, 'type': content_type,"X-Request-Time":0}
+
+    async def get_target_content(self, config, is_index, path,target_dir_path, target_path,target_url, web_yml_path,target_info_path):
         """获取目标站数据"""
         target_type_path = target_path+'.type'
+        target_info = self.func.get_yaml(target_info_path)
         if os.path.exists(target_path):
-            print(f'存在目标站缓存：{target_path}')
-            if is_index:
-                target_content, content_type = await self.target.linecache_get(target_path, target_type_path)
-            else:
-                target_content, content_type = await self.target.get(target_path, target_type_path)
-            # 存在缓存 直接返回
-            return {'success': True, 'content': target_content, 'type': content_type,"X-Request-Time":0}
+            return await self.get_target_cache(config,target_info,target_path,target_type_path,is_index)
         elif os.path.exists(target_type_path):
             # 存在type文件
             print(f'不存在目标站缓存 但存在type：{target_type_path}')
@@ -357,19 +380,12 @@ class Router():
 
         print('爬取目标网址：', target_url)
         # 爬取目标网址 缓存页面
-        save_success,request_time = await self.target.save(config,target_url, target_dir_path,target_path, target_type_path)
+        save_success,request_time = await self.target.save(config,target_url, target_dir_path,target_path, target_type_path,target_info_path,is_index,web_yml_path)
         if not save_success:
             return {'success': False, "info": "数据保存失败"}
-        print(target_path, '保存成功')
-        if is_index:
-            # 如果是首页访问 新开目标站 则在from.yml中写入配置文件路径web_yml_path
-            target_from_path = target_dir_path+"/from.yml"
-            async with aiofiles.open(target_from_path, 'w', encoding='utf-8')as tem_f:
-                await tem_f.write(f"path: {web_yml_path}")
-            target_content, content_type = await self.target.linecache_get(target_path, target_type_path)
-        else:
-            target_content, content_type = await self.target.get(target_path, target_type_path)
-        return {'success': True, 'content': target_content, 'type': content_type,'X-Request-Time':request_time}
+        print(target_path, '目标站缓存 保存成功')
+        target_info = self.func.get_yaml(target_info_path)
+        return await self.get_target_cache(config,target_info,target_path,target_type_path,is_index)
 
     async def route(self, request, response, path):
         """主路由"""
@@ -426,9 +442,9 @@ class Router():
             target_path = os.path.join(target_dir_path, f'{target_url_path}')
             # 内页 目标站网址
             target_url = f"http://{target_full_domain}/{real_path.strip('./')}"
-
+        target_info_path = os.path.join(TARGET_PATH, target_full_domain)+f"/{TAGET_INFO_NAME}"
         # 首页 等待访问的目标站网址
-        target_result = await self.get_target_content(config, is_index, path,target_dir_path, target_path,target_url, web_yml_path)
+        target_result = await self.get_target_content(config, is_index, path,target_dir_path, target_path,target_url, web_yml_path,target_info_path)
         if not target_result['success']:
             if 'jump' in target_result:
                 # 跳转到文件流处理

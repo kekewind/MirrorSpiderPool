@@ -39,8 +39,7 @@ async def middleware(request, call_next, func, templates):
         return JSONResponse(status_code=403, content={"error": '10001'})
     # 拦截根域名 跳WWW
     if config['【访问策略】']['根域名跳WWW']:
-        subdomain, full_domain, root_domain = func.get_domain_info(
-            str(request.base_url))
+        full_domain, root_domain = func.get_domain_info(str(request.base_url))[1:]
         if full_domain == root_domain:
             new_url = str(request.url).replace(
                 'http://', "http://www.").replace('https://', "https://www.")
